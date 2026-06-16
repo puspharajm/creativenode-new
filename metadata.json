@@ -1,0 +1,6 @@
+{
+  "name": "CreativeNode Poster Studio",
+  "description": "Premier digital poster design studio specializing in luxury, brutalist, and modern flyer artwork. Features a live canvas generator, premium agency portfolios, and pricing customizers.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

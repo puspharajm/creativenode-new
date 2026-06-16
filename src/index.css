@@ -1,0 +1,111 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@0,400..900;1,400..900&family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@300;400;500;600&family=Outfit:wght@300;400;500;600;700;800&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Space Grotesk", sans-serif;
+  --font-editorial: "Playfair Display", serif;
+  --font-outfit: "Outfit", sans-serif;
+  --font-mono: "JetBrains Mono", monospace;
+
+  --color-gold-50: #fefcf0;
+  --color-gold-100: #fcf6cd;
+  --color-gold-200: #f8eb9b;
+  --color-gold-300: #f3d85d;
+  --color-gold-400: #eec12e;
+  --color-gold-500: #dfa614;
+  --color-gold-600: #ca8a0f;
+  --color-gold-700: #a16412;
+  --color-gold-800: #854f16;
+  --color-gold-900: #71411a;
+  --color-gold-950: #42220b;
+  
+  --color-noir-50: #fafafa;
+  --color-noir-100: #f4f4f5;
+  --color-noir-200: #e4e4e7;
+  --color-noir-300: #d4d4d8;
+  --color-noir-450: #a1a1aa;
+  --color-noir-600: #52525b;
+  --color-noir-700: #3f3f46;
+  --color-noir-800: #27272a;
+  --color-noir-900: #18181b;
+  --color-noir-950: #09090b;
+}
+
+@layer utilities {
+  /* Premium Grain Texture */
+  .bg-grain {
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+    opacity: 0.045;
+  }
+  
+  /* Smooth Custom Scrollbar */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    background: #09090b;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: #c5a059;
+    border-radius: 4px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: #dfa614;
+  }
+}
+
+/* Custom fade effects */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* Glassmorphism Card */
+.glassmorphism-card {
+  backdrop-filter: blur(25px);
+  background: rgba(255, 255, 255, 0.05); /* darker base for dark mode */
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+}
+
+/* Claymorphism Button */
+.claymorphism-btn {
+  background: #4ade80;
+  border-radius: 40px;
+  box-shadow: 20px 20px 60px #2b8a50, -20px -20px 60px #8affb4;
+  color: #0f172a;
+  border: none;
+}
+
+/* Skeuomorphic Premium Button */
+.skeuomorphic-btn {
+  background: linear-gradient(145deg, #43c66d, #2e9c55);
+  box-shadow: inset 5px 5px 15px #6efaa1, inset -5px -5px 15px #226f3d, 0 15px 30px rgba(0, 0, 0, 0.3);
+  color: white;
+  border: none;
+  border-radius: 8px;
+}
+
+/* Liquid Glass Notification */
+.liquid-glass-notification {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0));
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+  border-radius: 16px;
+}
+
+/* CMYK Heatmap Overlay Simulator */
+.cmyk-coverage-heatmap {
+  mix-blend-mode: color-burn;
+  filter: sepia(1) hue-rotate(320deg) saturate(3) contrast(2) brightness(0.9);
+  opacity: 0.85;
+}
+

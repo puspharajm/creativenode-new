@@ -1,0 +1,92 @@
+{
+  "entities": {
+    "CustomPoster": {
+      "title": "CustomPoster",
+      "description": "Custom poster specs deployed by the Super-admin",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Unique id for the poster blueprint" },
+        "title": { "type": "string" },
+        "subtitle": { "type": "string" },
+        "details": { "type": "string" },
+        "theme": { "type": "string" },
+        "bgType": { "type": "string", "enum": ["image", "color", "gradient"] },
+        "bgValue": { "type": "string" },
+        "accentColor": { "type": "string" },
+        "textColor": { "type": "string" },
+        "fontTitle": { "type": "string" },
+        "fontSubtitle": { "type": "string" },
+        "align": { "type": "string", "enum": ["left", "center", "right"] },
+        "geometricElement": { "type": "string", "enum": ["circle", "lines", "grid", "border", "none"] },
+        "category": { "type": "string", "enum": ["fitness", "fashion", "minimalist", "offers", "all"] },
+        "keywords": { "type": "array" },
+        "badge": { "type": "string" },
+        "archived": { "type": "boolean" }
+      },
+      "required": ["id", "title", "subtitle", "details", "bgType", "bgValue", "accentColor", "textColor", "fontTitle", "fontSubtitle", "align", "geometricElement", "category"]
+    },
+    "SystemAuditLog": {
+      "title": "SystemAuditLog",
+      "description": "Chronological audit trace of administrative actions taken inside the Command CRM",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "timestamp": { "type": "number", "description": "Epoch timestamp when the action occurred" },
+        "action": { "type": "string" },
+        "details": { "type": "string" },
+        "adminEmail": { "type": "string" }
+      },
+      "required": ["id", "timestamp", "action", "details", "adminEmail"]
+    },
+    "ThemeConfiguration": {
+      "title": "ThemeConfiguration",
+      "description": "Global custom design elements for standard portfolio themes",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "isDark": { "type": "boolean" },
+        "bg": { "type": "string" },
+        "text": { "type": "string" },
+        "textMuted": { "type": "string" },
+        "border": { "type": "string" },
+        "borderMuted": { "type": "string" },
+        "accent": { "type": "string" },
+        "cardBg": { "type": "string" },
+        "cardBorder": { "type": "string" },
+        "glow": { "type": "string" },
+        "borderRadius": { "type": "string" }
+      },
+      "required": ["id", "name", "isDark", "bg", "text", "textMuted", "border", "accent", "cardBg", "borderRadius"]
+    },
+    "UserMetadata": {
+      "title": "UserMetadata",
+      "description": "User profile metadata, including customized theme adjustments and historical footprints",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "theme": { "type": "string" },
+        "recentlyViewed": { "type": "array" }
+      },
+      "required": ["uid", "theme"]
+    }
+  },
+  "firestore": {
+    "/custom_posters/{posterId}": {
+      "schema": "CustomPoster",
+      "description": "Global user-accessible custom posters collection"
+    },
+    "/system_audit_logs/{logId}": {
+      "schema": "SystemAuditLog",
+      "description": "Administrative system action logs used by the CRM panel"
+    },
+    "/theme_configurations/{themeId}": {
+      "schema": "ThemeConfiguration",
+      "description": "Dynamic workspace themes global configurations"
+    },
+    "/users/{userId}": {
+      "schema": "UserMetadata",
+      "description": "Sovereign user profile metadata containing their customized preferences"
+    }
+  }
+}
