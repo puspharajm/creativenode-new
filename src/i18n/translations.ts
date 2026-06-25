@@ -107,7 +107,7 @@ export const translations = {
     admin_tier_pro_label: 'Thozhil (Pro)',
     admin_tier_pro_desc: 'Business-level branding access — one-time lifetime license',
     admin_tier_pro_price: '₹4,999 one-time',
-    admin_tier_sov_label: 'Mudalvar (Unlimited)',
+    admin_tier_sov_label: 'Mudalvar — Unlimited Plan',
     admin_tier_sov_desc: 'Full freedom — lifetime unlimited exports, Admin only',
     admin_tier_sov_price: 'Admin Grant',
   },

@@ -973,7 +973,7 @@ export default function CrmPanel({
               ★ SYSTEM ROOT SECURITY ACTIVE
             </span>
             <span className="font-mono text-[9px] text-zinc-400 bg-zinc-900/60 border border-zinc-800 px-2.5 py-1 rounded-full inline-block">
-              admin@creativenode.com
+              puspharaj.m2003@gmail.com
             </span>
           </div>
           <h2 className="font-display text-4xl md:text-5xl font-medium text-white tracking-tight leading-none">

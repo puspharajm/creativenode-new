@@ -927,6 +927,12 @@ export default function App() {
   // Sync active user account tier when user is populated or changes
   useEffect(() => {
     if (user) {
+      if (user.email === 'puspharaj.m2003@gmail.com') {
+        setUserTier('sovereign');
+        localStorage.setItem(`creativenode_user_tier_${user.uid}`, 'sovereign');
+        return;
+      }
+      
       const savedTier = localStorage.getItem(`creativenode_user_tier_${user.uid}`);
       if (savedTier === 'pro' || savedTier === 'sovereign') {
         setUserTier(savedTier as any);
