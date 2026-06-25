@@ -572,47 +572,150 @@ export default function UserProfileView({
           >
             <div>
               <h3 className="text-sm font-bold text-white flex items-center gap-1.5 font-mono uppercase tracking-wider">
-                <Settings className="w-4 h-4 text-gold-400" /> Account Level Manager
+                <Settings className="w-4 h-4 text-gold-400" /> Subscription License
               </h3>
               <p className="text-zinc-500 text-[11px] mt-1 leading-normal">
-                Choose a one-time license archetype below to immediately simulate or manage your account limit privileges in real-time. No recurring subscriptions.
+                {user?.email === 'puspharaj.m2003@gmail.com'
+                  ? 'Super Admin: Assign account tiers directly. Changes take effect immediately.'
+                  : 'Your current subscription plan. Contact the admin to upgrade your license tier.'}
               </p>
             </div>
 
-            <div className="space-y-2.5">
-              {[
-                { id: 'free', label: 'Free Tier', quota: '2 designs per day', desc: 'Baseline explore access' },
-                { id: 'pro', label: 'Pro Suite (One-Time)', quota: '5 designs per day', desc: 'Lifetime branding lookbook access' },
-                { id: 'sovereign', label: 'Sovereign Rank (Lifetime)', quota: 'Unlimited designs', desc: 'One-time fee for unlimited physical exports' }
-              ].map((tier) => (
-                <button
-                  key={tier.id}
-                  onClick={() => {
-                    setUserTier(tier.id as any);
-                    if (user) {
-                      localStorage.setItem(`creativenode_user_tier_${user.uid}`, tier.id);
-                    }
-                    setShowConfirmation(`Upgraded to "${tier.label}" one-time license successfully!`);
-                    setTimeout(() => setShowConfirmation(null), 3000);
-                  }}
-                  className={`w-full p-3.5 rounded-xl border text-left flex justify-between items-center transition cursor-pointer select-none ${
-                    userTier === tier.id 
-                      ? 'bg-gold-500/5 border-gold-500 text-white shadow-md shadow-gold-500/5' 
-                      : 'bg-zinc-900/10 border-zinc-900/80 text-zinc-400 hover:border-zinc-800 hover:text-white'
-                  }`}
-                >
-                  <div>
-                    <span className="font-mono text-xs font-bold block">{tier.label}</span>
-                    <span className="text-zinc-500 text-[10px] block">{tier.desc}</span>
-                  </div>
-                  <div className="text-right">
-                    <span className="font-mono text-[9.5px] font-bold block text-gold-400 uppercase tracking-wide">
-                      {tier.quota}
-                    </span>
-                  </div>
-                </button>
-              ))}
-            </div>
+            {/* Super Admin Tier Switcher */}
+            {user?.email === 'puspharaj.m2003@gmail.com' ? (
+              <div className="space-y-2.5">
+                <div className="flex items-center gap-2 mb-3 bg-emerald-950/20 border border-emerald-500/20 rounded-lg px-3 py-2">
+                  <Shield className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                  <span className="font-mono text-[10px] text-emerald-400 uppercase tracking-wider font-bold">Super Admin Controls — Tier Assignment Active</span>
+                </div>
+                {[
+                  { id: 'free', label: 'Free Tier', quota: '2 designs / day', desc: 'Baseline explore access', price: 'Free', color: 'zinc' },
+                  { id: 'pro', label: 'Pro Suite', quota: '5 designs / day', desc: 'Lifetime branding lookbook access', price: '₹4,999 one-time', color: 'indigo' },
+                  { id: 'sovereign', label: 'Sovereign Rank', quota: 'Unlimited designs', desc: 'Lifetime unlimited exports — Admin only', price: 'Admin Grant', color: 'gold' }
+                ].map((tier) => (
+                  <button
+                    key={tier.id}
+                    onClick={() => {
+                      setUserTier(tier.id as any);
+                      if (user) {
+                        localStorage.setItem(`creativenode_user_tier_${user.uid}`, tier.id);
+                      }
+                      setShowConfirmation(`Tier set to "${tier.label}" successfully!`);
+                      setTimeout(() => setShowConfirmation(null), 3000);
+                    }}
+                    className={`w-full p-3.5 rounded-xl border text-left flex justify-between items-center transition cursor-pointer select-none ${
+                      userTier === tier.id 
+                        ? 'bg-gold-500/5 border-gold-500 text-white shadow-md shadow-gold-500/5' 
+                        : 'bg-zinc-900/10 border-zinc-900/80 text-zinc-400 hover:border-zinc-800 hover:text-white'
+                    }`}
+                  >
+                    <div>
+                      <span className="font-mono text-xs font-bold block">{tier.label}</span>
+                      <span className="text-zinc-500 text-[10px] block">{tier.desc}</span>
+                    </div>
+                    <div className="text-right flex flex-col items-end gap-1">
+                      <span className="font-mono text-[9.5px] font-bold block text-gold-400 uppercase tracking-wide">
+                        {tier.quota}
+                      </span>
+                      {userTier === tier.id && (
+                        <span className="text-[8px] font-mono text-emerald-400 flex items-center gap-1">
+                          <CheckCircle2 className="w-2.5 h-2.5" /> Active
+                        </span>
+                      )}
+                    </div>
+                  </button>
+                ))}
+              </div>
+            ) : (
+              /* Regular User: View-only subscription cards */
+              <div className="space-y-2.5">
+                {[
+                  { 
+                    id: 'free', 
+                    label: 'Free', 
+                    quota: '2 designs / day', 
+                    desc: 'Basic access to portfolio templates and the design studio.',
+                    price: 'Free forever',
+                    features: ['2 AI designs per day', 'Portfolio browsing', 'Basic Atelier access'],
+                    badgeColor: 'zinc'
+                  },
+                  { 
+                    id: 'pro', 
+                    label: 'Pro Suite', 
+                    quota: '5 designs / day', 
+                    desc: 'Unlock expanded daily credits, premium lookbooks, and export history.',
+                    price: '₹4,999 one-time',
+                    features: ['5 AI designs per day', 'Full portfolio library', 'Export gallery & history', 'Priority support'],
+                    badgeColor: 'indigo'
+                  },
+                  { 
+                    id: 'sovereign', 
+                    label: 'Sovereign', 
+                    quota: 'Unlimited', 
+                    desc: 'Full platform access with no limits. Granted exclusively by the CreativeNode admin.',
+                    price: 'Admin Grant Only',
+                    features: ['Unlimited AI designs', 'All Pro features', 'CRM workspace access', 'Direct admin channel', 'Lifetime license'],
+                    badgeColor: 'gold'
+                  }
+                ].map((tier) => {
+                  const isCurrentTier = userTier === tier.id;
+                  const isLocked = tier.id === 'sovereign';
+                  return (
+                    <div
+                      key={tier.id}
+                      className={`rounded-xl border p-4 flex justify-between items-start gap-4 transition-all ${
+                        isCurrentTier
+                          ? 'bg-gold-500/5 border-gold-500/60 shadow-md shadow-gold-500/5'
+                          : 'bg-zinc-900/10 border-zinc-900/80'
+                      }`}
+                    >
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1.5">
+                          <span className="font-mono text-xs font-bold text-white">{tier.label}</span>
+                          {isCurrentTier && (
+                            <span className="px-1.5 py-0.5 bg-gold-500/15 border border-gold-500/30 text-gold-400 font-mono text-[8px] uppercase tracking-widest rounded font-bold flex items-center gap-0.5">
+                              <CheckCircle2 className="w-2.5 h-2.5" /> Your Plan
+                            </span>
+                          )}
+                          {isLocked && (
+                            <span className="px-1.5 py-0.5 bg-zinc-900 border border-zinc-800 text-zinc-500 font-mono text-[8px] uppercase tracking-widest rounded font-bold flex items-center gap-0.5">
+                              <Shield className="w-2.5 h-2.5" /> Admin Only
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-zinc-500 text-[10px] leading-snug mb-2">{tier.desc}</p>
+                        <ul className="space-y-0.5">
+                          {tier.features.map((f) => (
+                            <li key={f} className="text-[9.5px] font-mono text-zinc-400 flex items-center gap-1.5">
+                              <span className="w-1 h-1 rounded-full bg-gold-400/60 shrink-0" />
+                              {f}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                      <div className="text-right shrink-0 flex flex-col items-end gap-2">
+                        <span className={`font-mono text-[9px] font-bold uppercase tracking-wide ${
+                          tier.id === 'sovereign' ? 'text-gold-400' : tier.id === 'pro' ? 'text-indigo-400' : 'text-zinc-400'
+                        }`}>
+                          {tier.price}
+                        </span>
+                        {!isCurrentTier && tier.id !== 'sovereign' && (
+                          <a
+                            href="mailto:puspharaj.m2003@gmail.com?subject=CreativeNode License Upgrade Request"
+                            className="inline-block bg-indigo-950/30 hover:bg-indigo-950/60 border border-indigo-500/40 hover:border-indigo-400 text-indigo-400 font-mono text-[8.5px] uppercase tracking-wider px-2.5 py-1 rounded-lg transition cursor-pointer select-none"
+                          >
+                            Request →
+                          </a>
+                        )}
+                        {!isCurrentTier && tier.id === 'sovereign' && (
+                          <span className="font-mono text-[8.5px] text-zinc-600 uppercase">Contact admin</span>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
 
             {/* Daily Design Limit Progress Bar */}
             <div className="bg-zinc-900/30 p-4 rounded-xl border border-zinc-900 space-y-2 font-mono">
@@ -629,12 +732,13 @@ export default function UserProfileView({
                 />
               </div>
               <p className="text-[10px] text-zinc-500 leading-snug">
-                {userTier === 'free' && "Free user designs reset at midnight. Upgrade with a one-time payment to eliminate limits."}
-                {userTier === 'pro' && "Pro Suite VIP active (Lifetime). 5 layout generations allowed daily."}
+                {userTier === 'free' && "Free users get 2 design generations per day. Upgrade for more."}
+                {userTier === 'pro' && "Pro Suite active — 5 layout generations allowed per day."}
                 {userTier === 'sovereign' && "Sovereign direct channel (Lifetime). No maximum design restrictions!"}
               </p>
             </div>
           </motion.div>
+
         </div>
 
         {/* RIGHT COLUMN: Modernist Theme customizer & Saved Collections (7 cols) */}
