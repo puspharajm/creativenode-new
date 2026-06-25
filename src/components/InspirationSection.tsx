@@ -128,7 +128,7 @@ const CONSTANT_INSPIRATIONAL_DESIGNS: InspirationItem[] = [
     geometricElement: 'circle',
     likes: 1045,
     trendingRank: 5,
-    gallerySource: 'Sovereign Brand Directory',
+    gallerySource: 'Mudalvar Brand Directory',
     designerName: 'Siddharth Nair',
     tags: ['Luxury', 'Elite', 'Deep Noir']
   },
@@ -379,7 +379,7 @@ export default function InspirationSection({ onViewProject, triggerToast }: Insp
       <div className="bg-zinc-900/20 border border-zinc-900 rounded-xl p-4 flex items-start gap-3.5">
         <Info className="w-5 h-5 text-gold-400 shrink-0 mt-0.5" />
         <div className="space-y-1 font-sans">
-          <h4 className="text-xs font-extrabold text-white uppercase tracking-wider font-mono">Sovereign Canvas Synchronizer Guidelines</h4>
+          <h4 className="text-xs font-extrabold text-white uppercase tracking-wider font-mono">Mudalvar Canvas Synchronizer Guidelines</h4>
           <p className="text-[10.5px] text-zinc-400 leading-relaxed font-light">
             Each composition featured on the Inspiration Board contains a mathematically balanced matrix of Swiss design variables. Clicking "Import Composition Layout" loads these precise parameters directly onto your active Atelier canvas, where they remain fully customizable under your subscription SLA.
           </p>

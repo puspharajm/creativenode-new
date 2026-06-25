@@ -333,7 +333,7 @@ export const PORTFOLIO_ITEMS: PortfolioItem[] = [
     year: "2026",
     client: "KSP Pattu Maligai",
     colors: ['#0F2A4A', '#DFB76C', '#FFFFFF'],
-    colorNames: ['Mangala Royal Indigo', 'KSP Handloom Gold', 'Sovereign Light'],
+    colorNames: ['Mangala Royal Indigo', 'KSP Handloom Gold', 'Mudalvar Light'],
     specs: {
       typeface: 'Cinzel Decorative & Inter',
       proportion: 'A1 Exhibition Layout',
@@ -367,7 +367,7 @@ export const PORTFOLIO_ITEMS: PortfolioItem[] = [
   {
     id: 'hotel-tamizh-park-republic-day',
     title: "Tri-Color Republic Day Memorial",
-    category: "Sovereign Respect Board",
+    category: "Mudalvar Respect Board",
     year: "2026",
     client: "Hotel Tamizh Park",
     colors: ['#E76F51', '#2A9D8F', '#264653'],

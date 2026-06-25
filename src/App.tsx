@@ -2300,7 +2300,7 @@ export default function App() {
                   onClick={() => {
                     setActiveTab('profile');
                     window.scrollTo({ top: 0, behavior: 'smooth' });
-                    triggerToast("Entering Sovereign Profile Ledger", "info");
+                    triggerToast("Entering Mudalvar Profile Ledger", "info");
                   }}
                   className="group relative flex h-9 w-9 items-center justify-center rounded-full border border-zinc-805 hover:border-gold-500 bg-zinc-900 p-[2px] transition duration-300 focus:outline-none cursor-pointer"
                   title="Explore your profile collections"
@@ -2335,7 +2335,7 @@ export default function App() {
                 <button
                   type="button"
                   onClick={() => {
-                    triggerToast("Sovereign Session cleanly terminated.", "info");
+                    triggerToast("Mudalvar Session cleanly terminated.", "info");
                   }}
                   className="h-7 w-7 rounded-lg border border-zinc-900 hover:border-red-500/15 bg-zinc-950 hover:bg-red-950/20 text-zinc-500 hover:text-red-400 flex items-center justify-center transition cursor-pointer"
                   title="Lock Out"
@@ -2474,7 +2474,7 @@ export default function App() {
             onBatchPrint={handleBatchPrintMultiPagePDF}
           />
         ) : activeTab === 'atelier' ? (
-          /* SOVEREIGN STANDALONE ATELIER STUDIO PAGE */
+          /* MUDALVAR STANDALONE ATELIER STUDIO PAGE */
           user ? (
             <div className="py-8 max-w-7xl mx-auto px-4 md:px-8">
               {/* Header info for separate Studio page */}
@@ -3090,7 +3090,7 @@ export default function App() {
                 <div className="flex gap-3 items-start">
                   <span className="font-mono text-gold-400 font-bold text-sm bg-zinc-900 border border-zinc-850 h-7 w-7 flex items-center justify-center rounded shrink-0">I</span>
                   <div>
-                    <h5 className="font-display font-semibold text-sm text-white">Sovereign Visuals Only</h5>
+                    <h5 className="font-display font-semibold text-sm text-white">Mudalvar Visuals Only</h5>
                     <p className="text-zinc-500 text-[11px] font-sans mt-0.5 leading-relaxed">Zero generic assets or default layouts. Every grid is customized around your logo and copy ratios perfectly.</p>
                   </div>
                 </div>
@@ -3212,7 +3212,7 @@ export default function App() {
                         {[
                           { id: 'standard', label: 'Standard' },
                           { id: 'vip', label: '6H VIP' },
-                          { id: 'sovereign', label: '2H Sovereign' }
+                          { id: 'sovereign', label: '2H Mudalvar' }
                         ].map((tab) => (
                           <button
                             key={tab.id}
@@ -3240,7 +3240,7 @@ export default function App() {
                         )}
                         {vipSlaType === 'sovereign' && (
                           <p className="text-amber-500 text-xs font-semibold">
-                            ⚠ High-Tier Sovereign Direct. Owner route assigned. SLA responds within <span className="text-white font-bold">120 Minutes</span> for extreme campaigns.
+                            ⚠ High-Tier Mudalvar Direct. Owner route assigned. SLA responds within <span className="text-white font-bold">120 Minutes</span> for extreme campaigns.
                           </p>
                         )}
                       </div>
@@ -5033,7 +5033,7 @@ export default function App() {
         )}
       </AnimatePresence>
 
-      {/* Sovereign Studio Gateway Auth Portal Modal */}
+      {/* Mudalvar Studio Gateway Auth Portal Modal */}
       <AuthPortal 
         isOpen={isAuthPortalOpen}
         onClose={() => setIsAuthPortalOpen(false)}

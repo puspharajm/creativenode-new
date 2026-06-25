@@ -126,7 +126,7 @@ export default function UserProfileView({
       if (onProfileUpdate) {
         onProfileUpdate();
       }
-      setShowConfirmation("Sovereign profile updated successfully.");
+      setShowConfirmation("Mudalvar profile updated successfully.");
       setTimeout(() => setShowConfirmation(null), 3000);
       setIsEditingProfile(false);
     } catch (err: any) {

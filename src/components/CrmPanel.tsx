@@ -977,7 +977,7 @@ export default function CrmPanel({
             </span>
           </div>
           <h2 className="font-display text-4xl md:text-5xl font-medium text-white tracking-tight leading-none">
-            Sovereign <span className="font-editorial italic font-normal text-gold-400">Control Suite</span>
+            Mudalvar <span className="font-editorial italic font-normal text-gold-400">Control Suite</span>
           </h2>
           <p className="text-zinc-500 text-xs md:text-sm max-w-xl mt-2 font-sans leading-relaxed">
             Execute real-time Firestore synchronization, audit chronological event logs, visualize Swiss design engagement parameters, and customize luxury layout specifications.
@@ -1701,7 +1701,7 @@ export default function CrmPanel({
                       <option value="">No change</option>
                       <option value="NEW RELEASE">NEW RELEASE</option>
                       <option value="LIMITED SPEC">LIMITED SPEC</option>
-                      <option value="EXCLUSIVE">EXCLUSIVE SOVEREIGN</option>
+                      <option value="EXCLUSIVE">EXCLUSIVE MUDALVAR</option>
                       <option value="CLEAR_BADGE">Clear badge</option>
                     </select>
                   </div>
@@ -2065,7 +2065,7 @@ export default function CrmPanel({
               {/* Modal header */}
               <div className="p-6 border-b border-zinc-900 bg-zinc-905 flex items-center justify-between">
                 <div>
-                  <span className="font-mono text-[9px] uppercase tracking-widest text-gold-400 font-bold block mb-1">SOVEREIGN WORKSPACE COMMAND</span>
+                  <span className="font-mono text-[9px] uppercase tracking-widest text-gold-400 font-bold block mb-1">MUDALVAR WORKSPACE COMMAND</span>
                   <h3 className="font-display text-xl font-bold text-white tracking-tight leading-none">
                     {editingId ? 'Modify Specification Blueprint' : 'Deploy Unique Poster Specification'}
                   </h3>
@@ -2786,7 +2786,7 @@ export default function CrmPanel({
                 }}
                 className="w-full text-left px-2.5 py-1.5 rounded-lg hover:bg-emerald-950/40 hover:text-emerald-400 transition flex items-center justify-between cursor-pointer"
               >
-                <span>Sovereign Push: LIVE</span>
+                <span>Mudalvar Push: LIVE</span>
                 {(contextMenu.poster.status || (contextMenu.poster.archived ? 'Archived' : 'Live')) === 'Live' && <Check className="w-3 h-3 text-emerald-400" />}
               </button>
               <button

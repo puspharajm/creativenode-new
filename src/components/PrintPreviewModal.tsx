@@ -163,7 +163,7 @@ export default function PrintPreviewModal({ isOpen, onClose, composition, placed
                       {/* Footer spec tag */}
                       <div className="relative z-10 pt-2 border-t border-white/10 flex flex-col font-mono text-[5px]" style={{ color: composition.textColor }}>
                         <p className="line-clamp-1 opacity-70 italic leading-relaxed">{composition.details}</p>
-                        <span className="opacity-40 mt-0.5">Sovereign Edition Blueprint</span>
+                        <span className="opacity-40 mt-0.5">Mudalvar Edition Blueprint</span>
                       </div>
                     </div>
 

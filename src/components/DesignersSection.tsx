@@ -133,7 +133,7 @@ export default function DesignersSection({ onViewPreset }: { onViewPreset: (pres
             {[
               { id: 'all', label: 'All Creatives' },
               { id: 'agency', label: 'Agencies & Studios' },
-              { id: 'individual', label: 'Sovereign Artists' }
+              { id: 'individual', label: 'Mudalvar Artists' }
             ].map((tab) => (
               <button
                 key={tab.id}
@@ -263,7 +263,7 @@ export default function DesignersSection({ onViewPreset }: { onViewPreset: (pres
       <div className="bg-zinc-900/20 border border-zinc-900 rounded-xl p-4 flex items-start gap-4">
         <Award className="w-5 h-5 text-gold-400 shrink-0 mt-0.5" />
         <div className="space-y-1 font-sans">
-          <h4 className="text-xs font-extrabold text-white uppercase tracking-wider font-mono">CreativeNode Sovereign Guild Charter</h4>
+          <h4 className="text-xs font-extrabold text-white uppercase tracking-wider font-mono">CreativeNode Mudalvar Guild Charter</h4>
           <p className="text-[10.5px] text-zinc-400 leading-relaxed font-light">
             All listed agencies and independent typographers adhere stringently to the CreativeNode SLA design guidelines. Member profiles are dynamically verified on-chain to ensure pristine layout fidelity, high contrast ratios, and prompt vector delivery for all premium retainer accounts.
           </p>

@@ -210,7 +210,7 @@ export default function AuthPortal({ isOpen, onClose, onAuthSuccess }: AuthPorta
             {!isClientUnlocked ? (
               <div className="text-center mb-6">
                 <span className="font-mono text-[9px] uppercase tracking-[0.25em] text-gold-400 block mb-2 font-bold">
-                  Sovereign Studio Gateway
+                  Mudalvar Studio Gateway
                 </span>
                 <h3 className="font-display text-xl md:text-2xl font-extrabold text-white tracking-tight leading-none">
                   {activeTab === 'login' && 'ACCESS ACCOUNT'}
@@ -787,7 +787,7 @@ export default function AuthPortal({ isOpen, onClose, onAuthSuccess }: AuthPorta
                       >
                         <div className="bg-zinc-900/30 p-3.5 rounded-xl border border-zinc-900/90 font-mono text-zinc-400 space-y-2">
                           <div className="flex items-center justify-between text-xs">
-                            <span className="text-zinc-500 uppercase">Sovereign Retainer Deposit</span>
+                            <span className="text-zinc-500 uppercase">Mudalvar Retainer Deposit</span>
                             <span className="text-white font-bold">$7,250.00 USD</span>
                           </div>
                           <div className="flex items-center justify-between text-xs">
