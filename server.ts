@@ -12,7 +12,7 @@ const PORT = 3000;
 
 // Neon PostgreSQL Database Connection
 const pool = new Pool({
-  connectionString: "postgresql://neondb_owner:npg_h0wFzxRbc9DV@ep-noisy-haze-aowfgd4h-pooler.c-2.ap-southeast-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require",
+  connectionString: process.env.NEON_URL,
 });
 
 // Ensure uploads directory exists
@@ -31,7 +31,7 @@ const s3 = new AWS.S3({
 const upload = multer({
   storage: multerS3({
     s3: s3,
-    bucket: process.env.AWS_S3_ACCESS_POINT_ALIAS || process.env.S3_BUCKET_NAME || 'creativenode-uploads',
+    bucket: process.env.S3_ACCESS_POINT_ALIAS || process.env.S3_BUCKET_NAME || 'creativenode-uploads',
     metadata: (req, file, cb) => {
       cb(null, { fieldName: file.fieldname });
     },
