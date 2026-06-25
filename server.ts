@@ -112,9 +112,22 @@ async function initDB() {
   }
 }
 
-async function startServer() {
-  const app = express();
-  app.use(express.json({ limit: '50mb' }));
+const app = express();
+
+let isDbInitialized = false;
+app.use(async (req, res, next) => {
+  if (!isDbInitialized && !req.path.startsWith('/assets')) {
+    try {
+      await initDB();
+      isDbInitialized = true;
+    } catch (e) {
+      console.error("DB init failed:", e);
+    }
+  }
+  next();
+});
+
+app.use(express.json({ limit: '50mb' }));
 
   // Serve uploaded images as static files
   // app.use("/uploads", express.static(UPLOADS_DIR)); // Disabled after migrating to S3
@@ -425,20 +438,27 @@ async function startServer() {
   });
 
   // ─── SERVE VITE OR STATIC ─────────────────────────────────────────────────
-  if (process.env.NODE_ENV !== "production") {
-    const vite = await createViteServer({ server: { middlewareMode: true }, appType: "spa" });
-    app.use(vite.middlewares);
-  } else {
-    const distPath = path.join(process.cwd(), "dist");
-    app.use(express.static(distPath));
-    app.get("*", (req, res) => res.sendFile(path.join(distPath, "index.html")));
+  // Export the app for Vercel Serverless Functions
+  export default app;
+
+  async function startLocalServer() {
+    if (process.env.NODE_ENV !== "production") {
+      const vite = await createViteServer({ server: { middlewareMode: true }, appType: "spa" });
+      app.use(vite.middlewares);
+    } else {
+      const distPath = path.join(process.cwd(), "dist");
+      app.use(express.static(distPath));
+      app.get("*", (req, res) => res.sendFile(path.join(distPath, "index.html")));
+    }
+
+    app.listen(PORT, "0.0.0.0", () => {
+      console.log(`[Express Server] active on http://0.0.0.0:${PORT}`);
+    });
   }
 
-  app.listen(PORT, "0.0.0.0", () => {
-    console.log(`[Express Server] active on http://0.0.0.0:${PORT}`);
-  });
-}
-
-initDB().then(() => startServer()).catch((error) => {
-  console.error("Server startup crashed:", error);
-});
+  // Only start the local server if not running in a serverless environment (Vercel)
+  if (!process.env.VERCEL) {
+    startLocalServer().catch((error) => {
+      console.error("Server startup crashed:", error);
+    });
+  }
