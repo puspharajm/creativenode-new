@@ -64,6 +64,23 @@ export const auth = {
     }
   },
 
+  googleLogin: async (credential: string): Promise<LocalUser> => {
+    const res = await fetch('/api/auth/google', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ credential })
+    });
+    const data = await res.json();
+    if (data.status === 'success') {
+      _currentUser = data.user;
+      localStorage.setItem('creativenode_auth_user', JSON.stringify(_currentUser));
+      notifyListeners();
+      return data.user;
+    } else {
+      throw new Error(data.message || 'Google Login failed');
+    }
+  },
+
   onAuthStateChanged: (cb: (user: LocalUser | null) => void) => {
     _authListeners.push(cb);
     setTimeout(() => cb(_currentUser), 0);

@@ -1,4 +1,11 @@
+import dotenv from "dotenv";
+dotenv.config();
+
 import express from "express";
+import cors from "cors";
+import dotenv from "dotenv";
+
+dotenv.config();
 import path from "path";
 import { createServer as createViteServer } from "vite";
 import { GoogleGenAI, Type } from "@google/genai";
@@ -7,8 +14,10 @@ import multer from "multer";
 import AWS from "aws-sdk";
 import multerS3 from "multer-s3";
 import fs from "fs";
+import { OAuth2Client } from "google-auth-library";
 
 const PORT = 3000;
+const googleClient = new OAuth2Client(process.env.VITE_GOOGLE_CLIENT_ID);
 
 // Neon PostgreSQL Database Connection
 const pool = new Pool({
@@ -188,10 +197,51 @@ async function startServer() {
       }
       const user = result.rows[0];
       res.json({ status: "success", user: { uid: user.uid, email: user.email, displayName: user.display_name, photoURL: user.photo_url } });
-    } catch (err) {
-      res.status(500).json({ status: "error", message: "Login failed." });
-    }
-  });
+      } catch (err) {
+        res.status(500).json({ status: "error", message: "Login failed." });
+      }
+    });
+
+    app.post("/api/auth/google", async (req, res) => {
+      const { credential } = req.body;
+      if (!credential) return res.status(400).json({ status: "error", message: "Missing credential." });
+      
+      try {
+        const ticket = await googleClient.verifyIdToken({
+          idToken: credential,
+          audience: process.env.VITE_GOOGLE_CLIENT_ID,
+        });
+        const payload = ticket.getPayload();
+        if (!payload || !payload.email) return res.status(400).json({ status: "error", message: "Invalid Google token payload." });
+        
+        const email = payload.email;
+        const name = payload.name || payload.given_name || "Google User";
+        const picture = payload.picture || "";
+        const uid = `google-${payload.sub}`;
+        
+        const client = await pool.connect();
+        const result = await client.query('SELECT * FROM users WHERE email = $1', [email]);
+        
+        if (result.rows.length === 0) {
+          // Create new user (using a random placeholder password since they use SSO)
+          const randomPassword = "sso_" + Math.random().toString(36).substring(2) + Date.now().toString(36);
+          await client.query(
+            'INSERT INTO users (uid, email, password, display_name, photo_url) VALUES ($1, $2, $3, $4, $5)',
+            [uid, email, randomPassword, name, picture]
+          );
+          client.release();
+          return res.json({ status: "success", user: { uid, email, displayName: name, photoURL: picture } });
+        } else {
+          // User exists, login
+          const user = result.rows[0];
+          client.release();
+          return res.json({ status: "success", user: { uid: user.uid, email: user.email, displayName: user.display_name, photoURL: user.photo_url } });
+        }
+      } catch (err) {
+        console.error("Google verify error:", err);
+        res.status(500).json({ status: "error", message: "Google authentication failed." });
+      }
+    });
 
   // ─── CRM LEADS (Replaces Firestore logic) ────────────────────────────────
   app.get("/api/db/leads", async (req, res) => {

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { GoogleOAuthProvider } from '@react-oauth/google';
 import { Navbar } from './components/Navbar';
 import { auth, LocalUser } from './auth';
 import { 
@@ -2064,7 +2065,8 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen bg-zinc-950 text-zinc-300 font-sans relative selection:bg-gold-400 selection:text-black transition-colors duration-300">
+    <GoogleOAuthProvider clientId={import.meta.env.VITE_GOOGLE_CLIENT_ID || ""}>
+      <div className="min-h-screen bg-zinc-950 text-zinc-300 font-sans relative selection:bg-gold-400 selection:text-black transition-colors duration-300">
       
       {/* Exquisite Vibe Style Adapter Style-Tag */}
       <style>{`
@@ -5059,5 +5061,6 @@ export default function App() {
         </a>
       </div>
     </div>
+    </GoogleOAuthProvider>
   );
 }
