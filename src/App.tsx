@@ -2334,7 +2334,9 @@ export default function App() {
 
                 <button
                   type="button"
-                  onClick={() => {
+                  onClick={async () => {
+                    await auth.signOut();
+                    setUser(null);
                     triggerToast("Mudalvar Session cleanly terminated.", "info");
                   }}
                   className="h-7 w-7 rounded-lg border border-zinc-900 hover:border-red-500/15 bg-zinc-950 hover:bg-red-950/20 text-zinc-500 hover:text-red-400 flex items-center justify-center transition cursor-pointer"
