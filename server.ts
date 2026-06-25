@@ -127,6 +127,7 @@ app.use(async (req, res, next) => {
   next();
 });
 
+app.use(cors());
 app.use(express.json({ limit: '50mb' }));
 
   // Serve uploaded images as static files
