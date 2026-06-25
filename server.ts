@@ -207,17 +207,33 @@ async function startServer() {
       if (!credential) return res.status(400).json({ status: "error", message: "Missing credential." });
       
       try {
-        const ticket = await googleClient.verifyIdToken({
-          idToken: credential,
-          audience: process.env.VITE_GOOGLE_CLIENT_ID,
-        });
-        const payload = ticket.getPayload();
-        if (!payload || !payload.email) return res.status(400).json({ status: "error", message: "Invalid Google token payload." });
+        let email, name, picture, uid;
         
-        const email = payload.email;
-        const name = payload.name || payload.given_name || "Google User";
-        const picture = payload.picture || "";
-        const uid = `google-${payload.sub}`;
+        if (credential.split('.').length === 3) {
+          const ticket = await googleClient.verifyIdToken({
+            idToken: credential,
+            audience: process.env.VITE_GOOGLE_CLIENT_ID,
+          });
+          const payload = ticket.getPayload();
+          if (!payload || !payload.email) return res.status(400).json({ status: "error", message: "Invalid Google token payload." });
+          
+          email = payload.email;
+          name = payload.name || payload.given_name || "Google User";
+          picture = payload.picture || "";
+          uid = `google-${payload.sub}`;
+        } else {
+          const response = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+            headers: { Authorization: `Bearer ${credential}` }
+          });
+          if (!response.ok) throw new Error("Failed to fetch user profile with access token");
+          const payload = await response.json();
+          if (!payload || !payload.email) return res.status(400).json({ status: "error", message: "Invalid Google token payload." });
+          
+          email = payload.email;
+          name = payload.name || payload.given_name || "Google User";
+          picture = payload.picture || "";
+          uid = `google-${payload.sub}`;
+        }
         
         const client = await pool.connect();
         const result = await client.query('SELECT * FROM users WHERE email = $1', [email]);
