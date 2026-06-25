@@ -21,11 +21,7 @@ const pool = new Pool({
   connectionString: process.env.NEON_URL,
 });
 
-// Ensure uploads directory exists
-const UPLOADS_DIR = path.join(process.cwd(), "public", "uploads");
-if (!fs.existsSync(UPLOADS_DIR)) {
-  fs.mkdirSync(UPLOADS_DIR, { recursive: true });
-}
+// Uploads are handled entirely via AWS S3 in production
 
 // Multer config for AWS S3 storage
 const s3 = new AWS.S3({
