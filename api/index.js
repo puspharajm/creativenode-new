@@ -1,4 +1,5 @@
-import app from "../dist/server.cjs";
+import serverModule from "../dist/server.cjs";
+const app = serverModule.default || serverModule;
 
 export default (req, res) => {
   try {
