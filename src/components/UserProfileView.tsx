@@ -8,6 +8,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { LocalUser, auth } from '../auth';
 import { PORTFOLIO_PRESETS } from '../data';
 import { PosterTemplate } from '../types';
+import { useLanguage } from '../context/LanguageContext';
 
 interface UserProfileViewProps {
   user: LocalUser | null;
@@ -56,6 +57,7 @@ export default function UserProfileView({
 }: UserProfileViewProps) {
   const [collections, setCollections] = useState<PosterTemplate[]>([]);
   const [showConfirmation, setShowConfirmation] = useState<string | null>(null);
+  const { t } = useLanguage();
 
   const [selectedProjects, setSelectedProjects] = useState<string[]>([]);
 
@@ -543,7 +545,7 @@ export default function UserProfileView({
                       {user?.displayName || 'CreativeNode Associate'}
                       {userTier === 'sovereign' && (
                         <span className="px-1.5 py-0.5 border border-gold-500/50 rounded-sm text-[8px] bg-gold-950/40 text-gold-400 font-extrabold uppercase shadow-[0_0_8px_rgba(212,175,55,0.15)] flex items-center gap-0.5 shrink-0 animate-pulse">
-                          ★ Mudalvar
+                          ★ {t('profile_tier_sovereign')}
                         </span>
                       )}
                     </h3>
@@ -554,9 +556,9 @@ export default function UserProfileView({
                 </div>
 
                 <div className="mt-6 pt-5 border-t border-zinc-900 flex justify-between items-center">
-                  <span className="text-[10px] font-mono text-zinc-500 uppercase">License Credentials</span>
+                  <span className="text-[10px] font-mono text-zinc-500 uppercase">{t('profile_license')}</span>
                   <span className="px-2.5 py-0.5 bg-gold-500/10 border border-gold-500/20 text-gold-400 font-mono text-[10px] uppercase tracking-wider rounded-lg font-bold">
-                    {userTier === 'free' ? 'Arambam Plan' : userTier === 'pro' ? 'Thozhil Plan' : 'Mudalvar Plan'}
+                    {userTier === 'free' ? t('profile_tier_free') : userTier === 'pro' ? t('profile_tier_pro') : t('profile_tier_sovereign')}
                   </span>
                 </div>
               </div>
@@ -572,12 +574,10 @@ export default function UserProfileView({
           >
             <div>
               <h3 className="text-sm font-bold text-white flex items-center gap-1.5 font-mono uppercase tracking-wider">
-                <Settings className="w-4 h-4 text-gold-400" /> Subscription License
+                <Settings className="w-4 h-4 text-gold-400" /> {t('profile_tier_section_title')}
               </h3>
               <p className="text-zinc-500 text-[11px] mt-1 leading-normal">
-                {user?.email === 'puspharaj.m2003@gmail.com'
-                  ? 'Super Admin: Assign account tiers directly. Changes take effect immediately.'
-                  : 'Your current subscription plan. Contact the admin to upgrade your license tier.'}
+                {user?.email === 'puspharaj.m2003@gmail.com' ? t('profile_admin_desc') : t('profile_user_desc')}
               </p>
             </div>
 
@@ -586,12 +586,12 @@ export default function UserProfileView({
               <div className="space-y-2.5">
                 <div className="flex items-center gap-2 mb-3 bg-emerald-950/20 border border-emerald-500/20 rounded-lg px-3 py-2">
                   <Shield className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                  <span className="font-mono text-[10px] text-emerald-400 uppercase tracking-wider font-bold">Super Admin Controls — Tier Assignment Active</span>
+                  <span className="font-mono text-[10px] text-emerald-400 uppercase tracking-wider font-bold">{t('profile_admin_banner')}</span>
                 </div>
                 {[
-                  { id: 'free', label: 'Arambam (Free)', quota: '2 designs / day', desc: 'Start your journey — basic access for newcomers', price: 'Free', color: 'zinc' },
-                  { id: 'pro', label: 'Thozhil (Pro)', quota: '5 designs / day', desc: 'Business-level branding access — one-time lifetime license', price: '₹4,999 one-time', color: 'indigo' },
-                  { id: 'sovereign', label: 'Mudalvar (Unlimited)', quota: 'Unlimited designs', desc: 'Full freedom — lifetime unlimited exports, Admin only', price: 'Admin Grant', color: 'gold' }
+                  { id: 'free', label: t('admin_tier_free_label'), quota: '2 designs / day', desc: t('admin_tier_free_desc'), price: t('admin_tier_free_price'), color: 'zinc' },
+                  { id: 'pro', label: t('admin_tier_pro_label'), quota: '5 designs / day', desc: t('admin_tier_pro_desc'), price: t('admin_tier_pro_price'), color: 'indigo' },
+                  { id: 'sovereign', label: t('admin_tier_sov_label'), quota: t('tier_sov_quota'), desc: t('admin_tier_sov_desc'), price: t('admin_tier_sov_price'), color: 'gold' }
                 ].map((tier) => (
                   <button
                     key={tier.id}
@@ -632,29 +632,29 @@ export default function UserProfileView({
                 {[
                   { 
                     id: 'free', 
-                    label: 'Arambam — Free Plan', 
-                    quota: '2 designs / day',
-                    desc: 'Perfect for newcomers. Browse the portfolio and use the basic design studio for free.',
-                    price: 'Free',
-                    features: ['2 AI designs per day', 'Portfolio browser access', 'Basic Atelier studio'],
+                    label: t('tier_free_label'), 
+                    quota: t('tier_free_quota'),
+                    desc: t('tier_free_desc'),
+                    price: t('tier_free_price'),
+                    features: [t('tier_free_f1'), t('tier_free_f2'), t('tier_free_f3')],
                     badgeColor: 'zinc'
                   },
                   { 
                     id: 'pro', 
-                    label: 'Thozhil — Business Plan', 
-                    quota: '5 designs / day',
-                    desc: 'For freelancers and small businesses. More credits, premium lookbooks and export history.',
-                    price: '₹4,999 one-time',
-                    features: ['5 AI designs per day', 'Full portfolio library', 'Export gallery & history', 'Priority support'],
+                    label: t('tier_pro_label'), 
+                    quota: t('tier_pro_quota'),
+                    desc: t('tier_pro_desc'),
+                    price: t('tier_pro_price'),
+                    features: [t('tier_pro_f1'), t('tier_pro_f2'), t('tier_pro_f3'), t('tier_pro_f4')],
                     badgeColor: 'indigo'
                   },
                   { 
                     id: 'sovereign', 
-                    label: 'Mudalvar — Unlimited Plan', 
-                    quota: 'Unlimited',
-                    desc: 'No limits whatsoever. Full platform access granted exclusively by the admin.',
-                    price: 'Admin Grant Only',
-                    features: ['Unlimited AI designs', 'All Thozhil features', 'CRM workspace access', 'Direct admin channel', 'Lifetime license'],
+                    label: t('tier_sov_label'), 
+                    quota: t('tier_sov_quota'),
+                    desc: t('tier_sov_desc'),
+                    price: t('tier_sov_price'),
+                    features: [t('tier_sov_f1'), t('tier_sov_f2'), t('tier_sov_f3'), t('tier_sov_f4'), t('tier_sov_f5')],
                     badgeColor: 'gold'
                   }
                 ].map((tier) => {
@@ -674,12 +674,12 @@ export default function UserProfileView({
                           <span className="font-mono text-xs font-bold text-white">{tier.label}</span>
                           {isCurrentTier && (
                             <span className="px-1.5 py-0.5 bg-gold-500/15 border border-gold-500/30 text-gold-400 font-mono text-[8px] uppercase tracking-widest rounded font-bold flex items-center gap-0.5">
-                              <CheckCircle2 className="w-2.5 h-2.5" /> Your Plan
+                              <CheckCircle2 className="w-2.5 h-2.5" /> {t('profile_your_plan')}
                             </span>
                           )}
                           {isLocked && (
                             <span className="px-1.5 py-0.5 bg-zinc-900 border border-zinc-800 text-zinc-500 font-mono text-[8px] uppercase tracking-widest rounded font-bold flex items-center gap-0.5">
-                              <Shield className="w-2.5 h-2.5" /> Admin Only
+                              <Shield className="w-2.5 h-2.5" /> {t('profile_admin_only')}
                             </span>
                           )}
                         </div>
@@ -704,11 +704,11 @@ export default function UserProfileView({
                             href="mailto:puspharaj.m2003@gmail.com?subject=CreativeNode Upgrade Request"
                             className="inline-block bg-indigo-950/30 hover:bg-indigo-950/60 border border-indigo-500/40 hover:border-indigo-400 text-indigo-400 font-mono text-[8.5px] uppercase tracking-wider px-2.5 py-1 rounded-lg transition cursor-pointer select-none"
                           >
-                            Request Upgrade →
+                            {t('profile_request_upgrade')}
                           </a>
                         )}
                         {!isCurrentTier && tier.id === 'sovereign' && (
-                          <span className="font-mono text-[8.5px] text-zinc-600 uppercase">Contact Admin</span>
+                          <span className="font-mono text-[8.5px] text-zinc-600 uppercase">{t('profile_contact_admin')}</span>
                         )}
                       </div>
                     </div>
@@ -732,9 +732,9 @@ export default function UserProfileView({
                 />
               </div>
               <p className="text-[10px] text-zinc-500 leading-snug">
-                {userTier === 'free' && "Arambam plan: 2 designs per day. Upgrade to Thozhil for more credits."}
-                {userTier === 'pro' && "Thozhil plan active — 5 designs per day, full portfolio and export access."}
-                {userTier === 'sovereign' && "Mudalvar plan active (Lifetime). No limits — unlimited design freedom!"}
+                {userTier === 'free' && t('profile_quota_free')}
+                {userTier === 'pro' && t('profile_quota_pro')}
+                {userTier === 'sovereign' && t('profile_quota_sovereign')}
               </p>
             </div>
           </motion.div>

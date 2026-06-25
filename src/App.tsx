@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { GoogleOAuthProvider } from '@react-oauth/google';
+import { LanguageProvider, useLanguage } from './context/LanguageContext';
 import { Navbar } from './components/Navbar';
 import { auth, LocalUser } from './auth';
 import { 
@@ -238,7 +239,82 @@ const THEME_STYLES: Record<string, {
   }
 };
 
+// ─── Hero Translated Components ───────────────────────────────────────────────
+function HeroTranslatedBadge() {
+  const { t } = useLanguage();
+  return <span>{t('hero_badge')}</span>;
+}
+
+function HeroTranslatedContent() {
+  const { t } = useLanguage();
+  return (
+    <>
+      <h1 className="font-display text-4xl sm:text-5xl lg:text-7xl font-bold tracking-tight text-white leading-none">
+        {t('hero_headline_1')} <br />
+        <span className="font-editorial italic font-normal text-gold-400 bg-gradient-to-r from-gold-300 via-gold-400 to-amber-600 bg-clip-text text-transparent">
+          {t('hero_headline_2')}
+        </span>
+      </h1>
+
+      <p className="font-sans text-sm md:text-base leading-relaxed text-zinc-400 max-w-xl mx-auto lg:mx-0">
+        {t('hero_body')}
+      </p>
+
+      {/* Statistics Row */}
+      <div className="grid grid-cols-3 gap-4 py-6 border-y border-zinc-900 max-w-lg mx-auto lg:mx-0">
+        <div>
+          <span className="font-outfit text-2xl md:text-3xl font-extrabold text-gold-400 block">2,400+</span>
+          <span className="font-mono text-[9px] text-zinc-500 tracking-wider uppercase block">{t('hero_stat_1_label')}</span>
+        </div>
+        <div>
+          <span className="font-outfit text-2xl md:text-3xl font-extrabold text-white block">99.8%</span>
+          <span className="font-mono text-[9px] text-zinc-500 tracking-wider uppercase block">{t('hero_stat_2_label')}</span>
+        </div>
+        <div>
+          <span className="font-outfit text-2xl md:text-3xl font-extrabold text-white block">24 HR</span>
+          <span className="font-mono text-[9px] text-zinc-500 tracking-wider uppercase block">{t('hero_stat_3_label')}</span>
+        </div>
+      </div>
+    </>
+  );
+}
+
+function HeroCtaButtons({ user, setActiveTab, setIsAuthPortalOpen, triggerToast }: any) {
+  const { t } = useLanguage();
+  return (
+    <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start pt-2">
+      <button
+        onClick={() => {
+          if (user) {
+            setActiveTab('atelier');
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+            triggerToast("Opening standalone Atelier Studio page", "info");
+          } else {
+            setIsAuthPortalOpen(true);
+            triggerToast("Please authenticate to configure canvas.", "info");
+          }
+        }}
+        className="bg-gold-500 hover:bg-gold-400 text-black font-display font-bold text-xs uppercase tracking-widest py-3 px-6 rounded-xl flex items-center justify-center gap-2 transition shadow shadow-gold-500/10 cursor-pointer"
+      >
+        {t('hero_cta_primary')} <Sparkles className="w-4 h-4 text-black" />
+      </button>
+
+      <button
+        onClick={() => {
+          const el = document.getElementById('portfolio-section');
+          if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }}
+        className="border border-zinc-800 hover:border-zinc-700 bg-zinc-900/30 hover:bg-zinc-900 text-white font-mono text-xs uppercase tracking-widest py-3 px-6 rounded-xl flex items-center justify-center gap-1.5 transition"
+      >
+        {t('hero_cta_secondary')} <Layers className="w-3.5 h-3.5" />
+      </button>
+    </div>
+  );
+}
+
 const playHapticClick = () => {
+
+
   try {
     const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
     if (!AudioContext) return;
@@ -2065,6 +2141,7 @@ export default function App() {
   }
 
   return (
+    <LanguageProvider>
     <GoogleOAuthProvider clientId={import.meta.env.VITE_GOOGLE_CLIENT_ID || ""}>
       <div className="min-h-screen bg-zinc-950 text-zinc-300 font-sans relative selection:bg-gold-400 selection:text-black transition-colors duration-300">
       
@@ -2466,63 +2543,15 @@ export default function App() {
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center w-full">
             {/* Left Hero side (Copywriter Masterwork) */}
             <div className="lg:col-span-7 text-center lg:text-left space-y-6">
-              <div className="inline-flex items-center gap-2 bg-zinc-900 border border-zinc-800 px-3 py-1 rounded-full text-xs font-mono tracking-wide text-zinc-400">
+              <div className="inline-flex items-center gap-2 bg-zinc-900/50 border border-zinc-800 rounded-full px-3 py-1 text-[10px] font-mono text-zinc-400 uppercase tracking-widest mb-6">
                 <span className="h-2 w-2 rounded-full bg-gold-500 animate-pulse" />
-                <span>Exquisite Visual Dominance Est. 2026</span>
+                <HeroTranslatedBadge />
               </div>
 
-              <h1 className="font-display text-4xl sm:text-5xl lg:text-7xl font-bold tracking-tight text-white leading-none">
-                Bespoke Poster <br />
-                <span className="font-editorial italic font-normal text-gold-400 bg-gradient-to-r from-gold-300 via-gold-400 to-amber-600 bg-clip-text text-transparent">Artwork Specialists</span>
-              </h1>
+              <HeroTranslatedContent />
 
-              <p className="font-sans text-sm md:text-base leading-relaxed text-zinc-400 max-w-xl mx-auto lg:mx-0">
-                CreativeNode merges elite Swiss modernist structure with cinematic deep noir aesthetics. We sculpt visual campaigns for premium athletic brands, high fashion houses, and corporate directors globally.
-              </p>
+              <HeroCtaButtons user={user} setActiveTab={setActiveTab} setIsAuthPortalOpen={setIsAuthPortalOpen} triggerToast={triggerToast} />
 
-              {/* Statistics Row */}
-              <div className="grid grid-cols-3 gap-4 py-6 border-y border-zinc-900 max-w-lg mx-auto lg:mx-0">
-                <div>
-                  <span className="font-outfit text-2xl md:text-3xl font-extrabold text-gold-400 block">2,400+</span>
-                  <span className="font-mono text-[9px] text-zinc-500 tracking-wider uppercase block">Posters Delivered</span>
-                </div>
-                <div>
-                  <span className="font-outfit text-2xl md:text-3xl font-extrabold text-white block">99.8%</span>
-                  <span className="font-mono text-[9px] text-zinc-500 tracking-wider uppercase block">On-Time SLA</span>
-                </div>
-                <div>
-                  <span className="font-outfit text-2xl md:text-3xl font-extrabold text-white block">24 HR</span>
-                  <span className="font-mono text-[9px] text-zinc-500 tracking-wider uppercase block">Available Turnaround</span>
-                </div>
-              </div>
-
-              <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start pt-2">
-                <button
-                  onClick={() => {
-                    if (user) {
-                      setActiveTab('atelier');
-                      window.scrollTo({ top: 0, behavior: 'smooth' });
-                      triggerToast("Opening standalone Atelier Studio page", "info");
-                    } else {
-                      setIsAuthPortalOpen(true);
-                      triggerToast("Please authenticate to configure canvas.", "info");
-                    }
-                  }}
-                  className="bg-gold-500 hover:bg-gold-400 text-black font-display font-bold text-xs uppercase tracking-widest py-3 px-6 rounded-xl flex items-center justify-center gap-2 transition shadow shadow-gold-500/10 cursor-pointer"
-                >
-                  Configure Live Canvas <Sparkles className="w-4 h-4 text-black" />
-                </button>
-
-                <button
-                  onClick={() => {
-                    const el = document.getElementById('portfolio-section');
-                    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                  }}
-                  className="border border-zinc-800 hover:border-zinc-700 bg-zinc-900/30 hover:bg-zinc-900 text-white font-mono text-xs uppercase tracking-widest py-3 px-6 rounded-xl flex items-center justify-center gap-1.5 transition"
-                >
-                  Explore Portfolio <Layers className="w-3.5 h-3.5" />
-                </button>
-              </div>
             </div>
 
             {/* Right Hero side (Interactive Spotlight Card carousel slider representation) */}
@@ -5062,5 +5091,6 @@ export default function App() {
       </div>
     </div>
     </GoogleOAuthProvider>
+    </LanguageProvider>
   );
 }
