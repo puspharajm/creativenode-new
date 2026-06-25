@@ -250,10 +250,10 @@ async function startServer() {
           client.release();
           return res.json({ status: "success", user: { uid: user.uid, email: user.email, displayName: user.display_name, photoURL: user.photo_url } });
         }
-      } catch (err) {
-        console.error("Google verify error:", err);
-        res.status(500).json({ status: "error", message: "Google authentication failed." });
-      }
+        } catch (err: any) {
+          console.error("Google verify error:", err);
+          return res.status(500).json({ status: "error", message: `Google Auth Error: ${err.message}` });
+        }
     });
 
   // ─── CRM LEADS (Replaces Firestore logic) ────────────────────────────────
