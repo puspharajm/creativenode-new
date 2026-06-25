@@ -543,7 +543,7 @@ export default function UserProfileView({
                       {user?.displayName || 'CreativeNode Associate'}
                       {userTier === 'sovereign' && (
                         <span className="px-1.5 py-0.5 border border-gold-500/50 rounded-sm text-[8px] bg-gold-950/40 text-gold-400 font-extrabold uppercase shadow-[0_0_8px_rgba(212,175,55,0.15)] flex items-center gap-0.5 shrink-0 animate-pulse">
-                          ★ Samrat
+                          ★ Mudalvar
                         </span>
                       )}
                     </h3>
@@ -556,7 +556,7 @@ export default function UserProfileView({
                 <div className="mt-6 pt-5 border-t border-zinc-900 flex justify-between items-center">
                   <span className="text-[10px] font-mono text-zinc-500 uppercase">License Credentials</span>
                   <span className="px-2.5 py-0.5 bg-gold-500/10 border border-gold-500/20 text-gold-400 font-mono text-[10px] uppercase tracking-wider rounded-lg font-bold">
-                    {userTier === 'free' ? 'Shuruat Plan' : userTier === 'pro' ? 'Udyami Plan' : 'Samrat Plan'}
+                    {userTier === 'free' ? 'Arambam Plan' : userTier === 'pro' ? 'Thozhil Plan' : 'Mudalvar Plan'}
                   </span>
                 </div>
               </div>
@@ -589,9 +589,9 @@ export default function UserProfileView({
                   <span className="font-mono text-[10px] text-emerald-400 uppercase tracking-wider font-bold">Super Admin Controls — Tier Assignment Active</span>
                 </div>
                 {[
-                  { id: 'free', label: 'Shuruat (Free)', quota: '2 designs / day', desc: 'Start your journey — basic access for newcomers', price: 'Free', color: 'zinc' },
-                  { id: 'pro', label: 'Udyami (Pro)', quota: '5 designs / day', desc: 'Business-level branding access — one-time lifetime license', price: '₹4,999 one-time', color: 'indigo' },
-                  { id: 'sovereign', label: 'Samrat (Unlimited)', quota: 'Unlimited designs', desc: 'Full freedom — lifetime unlimited exports, Admin only', price: 'Admin Grant', color: 'gold' }
+                  { id: 'free', label: 'Arambam (Free)', quota: '2 designs / day', desc: 'Start your journey — basic access for newcomers', price: 'Free', color: 'zinc' },
+                  { id: 'pro', label: 'Thozhil (Pro)', quota: '5 designs / day', desc: 'Business-level branding access — one-time lifetime license', price: '₹4,999 one-time', color: 'indigo' },
+                  { id: 'sovereign', label: 'Mudalvar (Unlimited)', quota: 'Unlimited designs', desc: 'Full freedom — lifetime unlimited exports, Admin only', price: 'Admin Grant', color: 'gold' }
                 ].map((tier) => (
                   <button
                     key={tier.id}
@@ -632,7 +632,7 @@ export default function UserProfileView({
                 {[
                   { 
                     id: 'free', 
-                    label: 'Shuruat — Free Plan', 
+                    label: 'Arambam — Free Plan', 
                     quota: '2 designs / day',
                     desc: 'Perfect for newcomers. Browse the portfolio and use the basic design studio for free.',
                     price: 'Free',
@@ -641,7 +641,7 @@ export default function UserProfileView({
                   },
                   { 
                     id: 'pro', 
-                    label: 'Udyami — Business Plan', 
+                    label: 'Thozhil — Business Plan', 
                     quota: '5 designs / day',
                     desc: 'For freelancers and small businesses. More credits, premium lookbooks and export history.',
                     price: '₹4,999 one-time',
@@ -650,11 +650,11 @@ export default function UserProfileView({
                   },
                   { 
                     id: 'sovereign', 
-                    label: 'Samrat — Unlimited Plan', 
+                    label: 'Mudalvar — Unlimited Plan', 
                     quota: 'Unlimited',
                     desc: 'No limits whatsoever. Full platform access granted exclusively by the admin.',
                     price: 'Admin Grant Only',
-                    features: ['Unlimited AI designs', 'All Udyami features', 'CRM workspace access', 'Direct admin channel', 'Lifetime license'],
+                    features: ['Unlimited AI designs', 'All Thozhil features', 'CRM workspace access', 'Direct admin channel', 'Lifetime license'],
                     badgeColor: 'gold'
                   }
                 ].map((tier) => {
@@ -732,9 +732,9 @@ export default function UserProfileView({
                 />
               </div>
               <p className="text-[10px] text-zinc-500 leading-snug">
-                {userTier === 'free' && "Shuruat plan: 2 designs per day. Upgrade to Udyami for more credits."}
-                {userTier === 'pro' && "Udyami plan active — 5 designs per day, full portfolio and export access."}
-                {userTier === 'sovereign' && "Samrat plan active (Lifetime). No limits — unlimited design freedom!"}
+                {userTier === 'free' && "Arambam plan: 2 designs per day. Upgrade to Thozhil for more credits."}
+                {userTier === 'pro' && "Thozhil plan active — 5 designs per day, full portfolio and export access."}
+                {userTier === 'sovereign' && "Mudalvar plan active (Lifetime). No limits — unlimited design freedom!"}
               </p>
             </div>
           </motion.div>
