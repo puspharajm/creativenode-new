@@ -355,7 +355,7 @@ export default function UserProfileView({
         </div>
 
         <div className="flex flex-wrap items-center gap-3">
-          {user && user.email === 'puspharaj.m2003@gmail.com' && setActiveTab && (
+          {user && userTier === 'sovereign' && setActiveTab && (
             <button
               onClick={() => setActiveTab('crm')}
               className="bg-emerald-950/20 hover:bg-emerald-950/40 border border-emerald-500/50 hover:border-emerald-400 text-emerald-400 font-mono text-[10px] uppercase tracking-wider px-4 py-2 rounded-xl transition duration-200 select-none cursor-pointer flex items-center gap-1.5 shadow-lg shadow-emerald-500/5"
@@ -549,9 +549,9 @@ export default function UserProfileView({
                         </span>
                       )}
                     </h3>
-                    <p className="text-zinc-500 text-[11px] font-mono leading-none tracking-tight">
-                      {user?.email || 'puspharaj.m2003@gmail.com'}
-                    </p>
+                    <span className="text-zinc-500 font-mono text-[10px] truncate max-w-[150px] inline-block">
+                      {user?.email || ''}
+                    </span>
                   </div>
                 </div>
 
@@ -576,17 +576,17 @@ export default function UserProfileView({
               <h3 className="text-sm font-bold text-white flex items-center gap-1.5 font-mono uppercase tracking-wider">
                 <Settings className="w-4 h-4 text-gold-400" /> {t('profile_tier_section_title')}
               </h3>
-              <p className="text-zinc-500 text-[11px] mt-1 leading-normal">
-                {user?.email === 'puspharaj.m2003@gmail.com' ? t('profile_admin_desc') : t('profile_user_desc')}
+              <p className="text-[10px] text-zinc-500 leading-snug font-sans">
+                {userTier === 'sovereign' ? t('profile_admin_desc') : t('profile_user_desc')}
               </p>
             </div>
 
             {/* Super Admin Tier Switcher */}
-            {user?.email === 'puspharaj.m2003@gmail.com' ? (
+            {userTier === 'sovereign' ? (
               <div className="space-y-2.5">
                 <div className="flex items-center gap-2 mb-3 bg-emerald-950/20 border border-emerald-500/20 rounded-lg px-3 py-2">
                   <Shield className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                  <span className="font-mono text-[10px] text-emerald-400 uppercase tracking-wider font-bold">{t('profile_admin_banner')}</span>
+                  <span className="font-mono text-[10px] text-emerald-400 uppercase tracking-wider font-bold">SYSTEM CONTROL PANEL</span>
                 </div>
                 {[
                   { id: 'free', label: t('admin_tier_free_label'), quota: '2 designs / day', desc: t('admin_tier_free_desc'), price: t('admin_tier_free_price'), color: 'zinc' },
@@ -679,7 +679,7 @@ export default function UserProfileView({
                           )}
                           {isLocked && (
                             <span className="px-1.5 py-0.5 bg-zinc-900 border border-zinc-800 text-zinc-500 font-mono text-[8px] uppercase tracking-widest rounded font-bold flex items-center gap-0.5">
-                              <Shield className="w-2.5 h-2.5" /> {t('profile_admin_only')}
+                              <Shield className="w-2.5 h-2.5" /> LIFETIME UNLOCK
                             </span>
                           )}
                         </div>
@@ -701,14 +701,14 @@ export default function UserProfileView({
                         </span>
                         {!isCurrentTier && tier.id !== 'sovereign' && (
                           <a
-                            href="mailto:puspharaj.m2003@gmail.com?subject=CreativeNode Upgrade Request"
+                            href="mailto:upgrade@creativenode.com?subject=CreativeNode Upgrade Request"
                             className="inline-block bg-indigo-950/30 hover:bg-indigo-950/60 border border-indigo-500/40 hover:border-indigo-400 text-indigo-400 font-mono text-[8.5px] uppercase tracking-wider px-2.5 py-1 rounded-lg transition cursor-pointer select-none"
                           >
                             {t('profile_request_upgrade')}
                           </a>
                         )}
                         {!isCurrentTier && tier.id === 'sovereign' && (
-                          <span className="font-mono text-[8.5px] text-zinc-600 uppercase">{t('profile_contact_admin')}</span>
+                          <span className="font-mono text-[8.5px] text-zinc-600 uppercase">CONTACT SUPPORT</span>
                         )}
                       </div>
                     </div>

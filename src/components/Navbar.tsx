@@ -104,11 +104,19 @@ export const Navbar: React.FC<NavbarProps> = ({ user, setUser }) => {
         {user ? (
           <div className="flex items-center space-x-3">
             <div className="hidden sm:flex items-center space-x-2">
-              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-gold-400 to-gold-500 flex items-center justify-center">
-                <UserIcon className="w-4 h-4 text-black" />
-              </div>
+              {localStorage.getItem('creativenode_profile_avatar') ? (
+                <img 
+                  src={localStorage.getItem('creativenode_profile_avatar')!} 
+                  alt="Avatar" 
+                  className="w-8 h-8 rounded-full object-cover border border-zinc-800"
+                />
+              ) : (
+                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-gold-400 to-gold-500 flex items-center justify-center">
+                  <UserIcon className="w-4 h-4 text-black" />
+                </div>
+              )}
               <span className="text-zinc-200 font-mono text-sm hidden lg:inline">
-                {user.displayName || user.email?.split('@')[0]}
+                {localStorage.getItem('creativenode_profile_name') || user.displayName || user.email?.split('@')[0]}
               </span>
             </div>
             <button

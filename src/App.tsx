@@ -682,14 +682,16 @@ export default function App() {
     }
   }, []);
 
-  // CRM Route Guard check: local admin always has access
+  // CRM Route Guard check: Local admin or sovereign tier authorized
   useEffect(() => {
     if (activeTab === 'crm') {
       if (userLoading) return;
-      // Local admin is always authorized
       if (!user) {
         setActiveTab('home');
-        triggerToast("Access denied: Authentication required.", "alert");
+        triggerToast("Authentication required for CRM access.", "alert");
+      } else if (userTier !== 'sovereign') {
+        setActiveTab('home');
+        triggerToast("CRM access requires Sovereign tier.", "alert");
       }
     }
   }, [activeTab, user, userLoading]);
@@ -2305,9 +2307,9 @@ export default function App() {
                   className="group relative flex h-9 w-9 items-center justify-center rounded-full border border-zinc-805 hover:border-gold-500 bg-zinc-900 p-[2px] transition duration-300 focus:outline-none cursor-pointer"
                   title="Explore your profile collections"
                 >
-                  {user.photoURL ? (
+                  {(localStorage.getItem('creativenode_profile_avatar') || user.photoURL) ? (
                     <img 
-                      src={user.photoURL} 
+                      src={localStorage.getItem('creativenode_profile_avatar') || user.photoURL || ''} 
                       alt="User Avatar" 
                       className="h-full w-full rounded-full object-cover group-hover:scale-105 transition duration-300"
                       referrerPolicy="no-referrer"
@@ -2327,7 +2329,7 @@ export default function App() {
                 {/* Minimal text identification and direct lock out anchor */}
                 <div className="flex flex-col text-left font-mono pr-1 select-none">
                   <span className="text-[9px] text-white font-bold leading-none tracking-wide truncate max-w-[80px]">
-                    {user.displayName || user.email?.split('@')[0]}
+                    {localStorage.getItem('creativenode_profile_name') || user.displayName || user.email?.split('@')[0]}
                   </span>
                   <span className="text-[7.5px] text-zinc-500 uppercase tracking-widest leading-none mt-0.5">Atelier Pro</span>
                 </div>
@@ -2425,7 +2427,7 @@ export default function App() {
 
       {/* Main Container */}
       <main id="top" className="relative">
-        {activeTab === 'crm' && user && user.email === 'puspharaj.m2003@gmail.com' ? (
+        {activeTab === 'crm' && user && userTier === 'sovereign' ? (
           <CrmPanel 
             posters={posters} 
             setPosters={setPosters} 

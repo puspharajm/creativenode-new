@@ -78,7 +78,7 @@ async function initDB() {
       
       -- Insert the default super-admin if they don't exist
       INSERT INTO users (uid, email, password, display_name, is_admin)
-      VALUES ('local-admin-sovereign', 'puspharaj.m2003@gmail.com', 'Push@2003', 'Puspharaj M', true)
+      VALUES ('local-admin-sovereign', 'admin@creativenode.com', 'Push@2003', 'Admin', true)
       ON CONFLICT (email) DO NOTHING;
       
       CREATE TABLE IF NOT EXISTS creativenode_leads (

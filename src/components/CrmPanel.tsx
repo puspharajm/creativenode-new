@@ -973,7 +973,7 @@ export default function CrmPanel({
               ★ SYSTEM ROOT SECURITY ACTIVE
             </span>
             <span className="font-mono text-[9px] text-zinc-400 bg-zinc-900/60 border border-zinc-800 px-2.5 py-1 rounded-full inline-block">
-              puspharaj.m2003@gmail.com
+              admin@creativenode.com
             </span>
           </div>
           <h2 className="font-display text-4xl md:text-5xl font-medium text-white tracking-tight leading-none">
@@ -2003,7 +2003,7 @@ export default function CrmPanel({
           <div className="p-4 bg-zinc-905 border border-zinc-900 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 font-mono text-xs">
             <div>
               <span className="text-zinc-400 font-extrabold block uppercase">CHRONOLOGICAL SECURED EVENT TRACE DIRECTORY</span>
-              <span className="text-zinc-600 text-[10px]">Security context auth: puspharaj.m2003@gmail.com</span>
+              <span className="text-zinc-600 text-[10px]">Security context auth: Mudalvar Admin</span>
             </div>
             <button
               onClick={exportAuditLogsCSV}
