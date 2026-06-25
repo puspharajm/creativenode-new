@@ -589,9 +589,9 @@ export default function UserProfileView({
                   <span className="font-mono text-[10px] text-emerald-400 uppercase tracking-wider font-bold">Super Admin Controls — Tier Assignment Active</span>
                 </div>
                 {[
-                  { id: 'free', label: 'Shuruat (Free)', quota: '2 designs / day', desc: 'Shuruaat karo — basic access for newcomers', price: 'Muft (Free)', color: 'zinc' },
-                  { id: 'pro', label: 'Udyami (Pro)', quota: '5 designs / day', desc: 'Vyavsayi level branding access — lifetime', price: '₹4,999 ek baar', color: 'indigo' },
-                  { id: 'sovereign', label: 'Samrat (Unlimited)', quota: 'Unlimited designs', desc: 'Poori azaadi — Lifetime unlimited exports, Admin only', price: 'Admin Grant', color: 'gold' }
+                  { id: 'free', label: 'Shuruat (Free)', quota: '2 designs / day', desc: 'Start your journey — basic access for newcomers', price: 'Free', color: 'zinc' },
+                  { id: 'pro', label: 'Udyami (Pro)', quota: '5 designs / day', desc: 'Business-level branding access — one-time lifetime license', price: '₹4,999 one-time', color: 'indigo' },
+                  { id: 'sovereign', label: 'Samrat (Unlimited)', quota: 'Unlimited designs', desc: 'Full freedom — lifetime unlimited exports, Admin only', price: 'Admin Grant', color: 'gold' }
                 ].map((tier) => (
                   <button
                     key={tier.id}
@@ -632,29 +632,29 @@ export default function UserProfileView({
                 {[
                   { 
                     id: 'free', 
-                    label: 'Shuruat — Muft Plan', 
-                    quota: '2 designs / din',
-                    desc: 'Naye logo ke liye — portfolio dekho, basic studio use karo. Bilkul muft.',
-                    price: 'Muft (Free)',
-                    features: ['Roz 2 AI poster banao', 'Portfolio browser access', 'Basic Atelier studio'],
+                    label: 'Shuruat — Free Plan', 
+                    quota: '2 designs / day',
+                    desc: 'Perfect for newcomers. Browse the portfolio and use the basic design studio for free.',
+                    price: 'Free',
+                    features: ['2 AI designs per day', 'Portfolio browser access', 'Basic Atelier studio'],
                     badgeColor: 'zinc'
                   },
                   { 
                     id: 'pro', 
                     label: 'Udyami — Business Plan', 
-                    quota: '5 designs / din',
-                    desc: 'Chhote vyavsaay aur freelancers ke liye — zyada credit, premium lookbook aur export history.',
-                    price: '₹4,999 ek baar',
-                    features: ['Roz 5 AI poster banao', 'Poori portfolio library', 'Export gallery & history', 'Priority support'],
+                    quota: '5 designs / day',
+                    desc: 'For freelancers and small businesses. More credits, premium lookbooks and export history.',
+                    price: '₹4,999 one-time',
+                    features: ['5 AI designs per day', 'Full portfolio library', 'Export gallery & history', 'Priority support'],
                     badgeColor: 'indigo'
                   },
                   { 
                     id: 'sovereign', 
                     label: 'Samrat — Unlimited Plan', 
                     quota: 'Unlimited',
-                    desc: 'Koi limit nahi — poori platform access. Sirf admin ke dwara diya jaata hai.',
+                    desc: 'No limits whatsoever. Full platform access granted exclusively by the admin.',
                     price: 'Admin Grant Only',
-                    features: ['Unlimited AI designs', 'Sab Udyami features', 'CRM workspace access', 'Direct admin channel', 'Lifetime license'],
+                    features: ['Unlimited AI designs', 'All Udyami features', 'CRM workspace access', 'Direct admin channel', 'Lifetime license'],
                     badgeColor: 'gold'
                   }
                 ].map((tier) => {
@@ -674,12 +674,12 @@ export default function UserProfileView({
                           <span className="font-mono text-xs font-bold text-white">{tier.label}</span>
                           {isCurrentTier && (
                             <span className="px-1.5 py-0.5 bg-gold-500/15 border border-gold-500/30 text-gold-400 font-mono text-[8px] uppercase tracking-widest rounded font-bold flex items-center gap-0.5">
-                              <CheckCircle2 className="w-2.5 h-2.5" /> Aapka Plan
+                              <CheckCircle2 className="w-2.5 h-2.5" /> Your Plan
                             </span>
                           )}
                           {isLocked && (
                             <span className="px-1.5 py-0.5 bg-zinc-900 border border-zinc-800 text-zinc-500 font-mono text-[8px] uppercase tracking-widest rounded font-bold flex items-center gap-0.5">
-                              <Shield className="w-2.5 h-2.5" /> Sirf Admin
+                              <Shield className="w-2.5 h-2.5" /> Admin Only
                             </span>
                           )}
                         </div>
@@ -704,11 +704,11 @@ export default function UserProfileView({
                             href="mailto:puspharaj.m2003@gmail.com?subject=CreativeNode Upgrade Request"
                             className="inline-block bg-indigo-950/30 hover:bg-indigo-950/60 border border-indigo-500/40 hover:border-indigo-400 text-indigo-400 font-mono text-[8.5px] uppercase tracking-wider px-2.5 py-1 rounded-lg transition cursor-pointer select-none"
                           >
-                            Upgrade Maango →
+                            Request Upgrade →
                           </a>
                         )}
                         {!isCurrentTier && tier.id === 'sovereign' && (
-                          <span className="font-mono text-[8.5px] text-zinc-600 uppercase">Admin se sampark karo</span>
+                          <span className="font-mono text-[8.5px] text-zinc-600 uppercase">Contact Admin</span>
                         )}
                       </div>
                     </div>
@@ -732,9 +732,9 @@ export default function UserProfileView({
                 />
               </div>
               <p className="text-[10px] text-zinc-500 leading-snug">
-                {userTier === 'free' && "Shuruat plan mein roz 2 design banao. Zyada chahiye toh Udyami plan lo!"}
-                {userTier === 'pro' && "Udyami plan active — roz 5 layout generations allowed hain."}
-                {userTier === 'sovereign' && "Samrat channel active (Lifetime). Koi limit nahi — bilkul azaad!"}
+                {userTier === 'free' && "Shuruat plan: 2 designs per day. Upgrade to Udyami for more credits."}
+                {userTier === 'pro' && "Udyami plan active — 5 designs per day, full portfolio and export access."}
+                {userTier === 'sovereign' && "Samrat plan active (Lifetime). No limits — unlimited design freedom!"}
               </p>
             </div>
           </motion.div>
