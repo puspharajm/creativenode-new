@@ -5,7 +5,7 @@ import {
   ShieldAlert
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { LOCAL_ADMIN } from '../firebase';
+import { auth } from '../auth';
 
 interface AuthPortalProps {
   isOpen: boolean;
@@ -40,24 +40,26 @@ export default function AuthPortal({ isOpen, onClose, onAuthSuccess }: AuthPorta
   // Client Portal premium features
   const [activePortalTab, setActivePortalTab] = useState<'overview' | 'campaigns' | 'billing'>('overview');
 
-  // Handle standard login - replaced with local mock auth
+  // Handle standard login
   const handleEmailLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setErrorMessage('');
     setSuccessMsg('');
     
-    // Simulate a brief auth check
-    await new Promise(resolve => setTimeout(resolve, 600));
-    
-    // Accept any email/password - we use local admin session
-    setSuccessMsg('Successfully authenticated! Welcome back.');
-    if (onAuthSuccess) onAuthSuccess(LOCAL_ADMIN);
-    setTimeout(() => { onClose(); resetFields(); }, 800);
-    setLoading(false);
+    try {
+      const user = await auth.login(email, password);
+      setSuccessMsg('Successfully authenticated! Welcome back.');
+      if (onAuthSuccess) onAuthSuccess(user);
+      setTimeout(() => { onClose(); resetFields(); }, 800);
+    } catch (error: any) {
+      setErrorMessage(error.message || 'Authentication failed. Verify credentials.');
+    } finally {
+      setLoading(false);
+    }
   };
 
-  // Handle standard registration - replaced with local mock auth
+  // Handle standard registration
   const handleEmailSignup = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -70,34 +72,18 @@ export default function AuthPortal({ isOpen, onClose, onAuthSuccess }: AuthPorta
       return;
     }
     
-    await new Promise(resolve => setTimeout(resolve, 700));
-    setSuccessMsg('Account provisioned successfully! Connecting environment.');
-    if (onAuthSuccess) onAuthSuccess({ ...LOCAL_ADMIN, email, displayName: displayName || LOCAL_ADMIN.displayName });
-    setTimeout(() => { onClose(); resetFields(); }, 1000);
-    setLoading(false);
+    try {
+      const user = await auth.signup(email, displayName, password);
+      setSuccessMsg('Account provisioned successfully! Connecting environment.');
+      if (onAuthSuccess) onAuthSuccess(user);
+      setTimeout(() => { onClose(); resetFields(); }, 1000);
+    } catch (error: any) {
+      setErrorMessage(error.message || 'Registration failed.');
+    } finally {
+      setLoading(false);
+    }
   };
 
-  // Handle Google sign-in (local mock)
-  const handleGoogleSignIn = async () => {
-    setLoading(true);
-    setErrorMessage('');
-    await new Promise(resolve => setTimeout(resolve, 500));
-    setSuccessMsg('Authenticated successfully via Google.');
-    if (onAuthSuccess) onAuthSuccess(LOCAL_ADMIN);
-    setTimeout(() => { onClose(); resetFields(); }, 800);
-    setLoading(false);
-  };
-
-  // Handle GitHub sign-in (local mock)
-  const handleGithubSignIn = async () => {
-    setLoading(true);
-    setErrorMessage('');
-    await new Promise(resolve => setTimeout(resolve, 500));
-    setSuccessMsg('Authenticated successfully via GitHub.');
-    if (onAuthSuccess) onAuthSuccess(LOCAL_ADMIN);
-    setTimeout(() => { onClose(); resetFields(); }, 800);
-    setLoading(false);
-  };
 
   // Reset fields state
   const resetFields = () => {
@@ -370,55 +356,6 @@ export default function AuthPortal({ isOpen, onClose, onAuthSuccess }: AuthPorta
                     </button>
                   </form>
 
-                  {/* Super-admin testing helper shortcut */}
-                  <div className="pt-2 text-center">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setEmail('puspharaj.m2003@gmail.com');
-                        setPassword('puspharaj123'); // Preset safe default password for easy testing
-                        setSuccessMsg('Elevated super-admin credentials auto-filled! Please click Sign In to continue.');
-                        if (errorMessage) {
-                          setErrorMessage('');
-                        }
-                      }}
-                      className="w-full inline-flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl border border-dashed border-gold-500/30 bg-gold-950/10 hover:bg-gold-500/10 hover:border-gold-500/40 text-gold-400 hover:text-gold-300 transition text-[9px] font-mono uppercase tracking-wider font-extrabold cursor-pointer"
-                      title="Autofill certified supervisor access keys"
-                    >
-                      <ShieldAlert className="w-3.5 h-3.5 animate-bounce" />
-                      <span>Demo Autofill: Sovereign Super-Admin</span>
-                    </button>
-                  </div>
-
-                  {/* Provider divider separator */}
-                  <div className="relative flex items-center justify-center py-2">
-                    <div className="absolute inset-x-0 h-[1px] bg-zinc-900" />
-                    <span className="relative px-3.5 bg-zinc-950 text-[9px] font-mono text-zinc-600 uppercase tracking-widest block">
-                      Rapid Handshake
-                    </span>
-                  </div>
-
-                  {/* OAuth Sign-Ins */}
-                  <div className="grid grid-cols-2 gap-3.5">
-                    <button
-                      onClick={handleGoogleSignIn}
-                      disabled={loading}
-                      type="button"
-                      className="flex items-center justify-center gap-2 border border-zinc-900 hover:border-zinc-800 bg-zinc-900/30 hover:bg-zinc-900 px-4 py-2.5 rounded-xl text-zinc-300 hover:text-white text-xs transition font-mono cursor-pointer"
-                    >
-                      <Compass className="w-3.5 h-3.5 text-gold-400" />
-                      <span>Google API</span>
-                    </button>
-                    <button
-                      onClick={handleGithubSignIn}
-                      disabled={loading}
-                      type="button"
-                      className="flex items-center justify-center gap-2 border border-zinc-900 hover:border-zinc-800 bg-zinc-900/30 hover:bg-zinc-900 px-4 py-2.5 rounded-xl text-zinc-300 hover:text-white text-xs transition font-mono cursor-pointer"
-                    >
-                      <Github className="w-3.5 h-3.5" />
-                      <span>GitHub SSO</span>
-                    </button>
-                  </div>
 
                   {/* Switch to Signup */}
                   <div className="pt-2 text-center">
@@ -517,33 +454,6 @@ export default function AuthPortal({ isOpen, onClose, onAuthSuccess }: AuthPorta
                     </button>
                   </form>
 
-                  <div className="relative flex items-center justify-center py-2">
-                    <div className="absolute inset-x-0 h-[1px] bg-zinc-900" />
-                    <span className="relative px-3.5 bg-zinc-950 text-[9px] font-mono text-zinc-600 uppercase tracking-widest block">
-                      Rapid Handshake
-                    </span>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-3.5">
-                    <button
-                      onClick={handleGoogleSignIn}
-                      disabled={loading}
-                      type="button"
-                      className="flex items-center justify-center gap-2 border border-zinc-900 hover:border-zinc-800 bg-zinc-900/30 hover:bg-zinc-900 px-4 py-2.5 rounded-xl text-zinc-300 hover:text-white text-xs transition font-mono cursor-pointer"
-                    >
-                      <Compass className="w-3.5 h-3.5 text-gold-400" />
-                      <span>Google API</span>
-                    </button>
-                    <button
-                      onClick={handleGithubSignIn}
-                      disabled={loading}
-                      type="button"
-                      className="flex items-center justify-center gap-2 border border-zinc-900 hover:border-zinc-800 bg-zinc-900/30 hover:bg-zinc-900 px-4 py-2.5 rounded-xl text-zinc-300 hover:text-white text-xs transition font-mono cursor-pointer"
-                    >
-                      <Github className="w-3.5 h-3.5" />
-                      <span>GitHub SSO</span>
-                    </button>
-                  </div>
 
                   {/* Switch to Login */}
                   <div className="pt-2 text-center">

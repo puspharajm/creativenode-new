@@ -4,6 +4,8 @@ import { createServer as createViteServer } from "vite";
 import { GoogleGenAI, Type } from "@google/genai";
 import { Pool } from "pg";
 import multer from "multer";
+import AWS from "aws-sdk";
+import multerS3 from "multer-s3";
 import fs from "fs";
 
 const PORT = 3000;
@@ -19,21 +21,68 @@ if (!fs.existsSync(UPLOADS_DIR)) {
   fs.mkdirSync(UPLOADS_DIR, { recursive: true });
 }
 
-// Multer config for local image storage
-const storage = multer.diskStorage({
-  destination: (_req, _file, cb) => cb(null, UPLOADS_DIR),
-  filename: (_req, file, cb) => {
-    const safeName = file.originalname.replace(/[^a-zA-Z0-9._-]/g, '_');
-    cb(null, `${Date.now()}_${safeName}`);
-  }
+// Multer config for AWS S3 storage
+const s3 = new AWS.S3({
+  accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+  secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
+  region: process.env.AWS_REGION,
 });
-const upload = multer({ storage, limits: { fileSize: 10 * 1024 * 1024 } }); // 10MB max
+
+const upload = multer({
+  storage: multerS3({
+    s3: s3,
+    bucket: process.env.AWS_S3_ACCESS_POINT_ALIAS || process.env.S3_BUCKET_NAME || 'creativenode-uploads',
+    metadata: (req, file, cb) => {
+      cb(null, { fieldName: file.fieldname });
+    },
+    key: (req, file, cb) => {
+      const safeName = file.originalname.replace(/[^a-zA-Z0-9._-]/g, '_');
+      const uniqueName = `${Date.now()}_${safeName}`;
+      cb(null, uniqueName);
+    },
+    contentType: multerS3.autoContentType,
+    acl: 'public-read'
+  }),
+  limits: { fileSize: 10 * 1024 * 1024 } // 10MB max
+});
 
 // Initialize Neon tables on startup
 async function initDB() {
   const client = await pool.connect();
   try {
     await client.query(`
+      CREATE TABLE IF NOT EXISTS uploaded_files (
+        id TEXT PRIMARY KEY,
+        s3_key TEXT NOT NULL,
+        original_name TEXT NOT NULL,
+        content_type TEXT,
+        size BIGINT,
+        uploaded_by TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+      CREATE TABLE IF NOT EXISTS users (
+        uid TEXT PRIMARY KEY,
+        email TEXT UNIQUE NOT NULL,
+        password TEXT NOT NULL,
+        display_name TEXT,
+        photo_url TEXT,
+        is_admin BOOLEAN DEFAULT false,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+      
+      -- Insert the default super-admin if they don't exist
+      INSERT INTO users (uid, email, password, display_name, is_admin)
+      VALUES ('local-admin-sovereign', 'puspharaj.m2003@gmail.com', 'Push@2003', 'Puspharaj M', true)
+      ON CONFLICT (email) DO NOTHING;
+      
+      CREATE TABLE IF NOT EXISTS creativenode_leads (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        email TEXT NOT NULL,
+        service TEXT NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+
       CREATE TABLE IF NOT EXISTS custom_posters (
         id TEXT PRIMARY KEY,
         data JSONB NOT NULL,
@@ -62,14 +111,34 @@ async function startServer() {
   app.use(express.json({ limit: '50mb' }));
 
   // Serve uploaded images as static files
-  app.use("/uploads", express.static(UPLOADS_DIR));
+  // app.use("/uploads", express.static(UPLOADS_DIR)); // Disabled after migrating to S3
 
   // ─── IMAGE UPLOAD ENDPOINT ───────────────────────────────────────────────
-  app.post("/api/upload", upload.single("file"), (req, res) => {
+  app.post("/api/upload", upload.single("file"), async (req, res) => {
     if (!req.file) {
       return res.status(400).json({ status: "error", message: "No file provided." });
     }
-    const url = `/uploads/${req.file.filename}`;
+    // S3 URL is provided by multer-s3 in the file.location property
+    const url = (req.file as any).location;
+    // Record upload metadata in the uploaded_files table
+    try {
+      const client = await pool.connect();
+      await client.query(
+        `INSERT INTO uploaded_files (id, s3_key, original_name, content_type, size, uploaded_by) VALUES ($1, $2, $3, $4, $5, $6)`,
+        [
+          `file-${Date.now()}`,
+          (req.file as any).key,
+          req.file.originalname,
+          req.file.mimetype,
+          req.file.size,
+          // Assuming a simple auth context – replace with actual user ID if available
+          (req as any).user?.uid || null,
+        ]
+      );
+      client.release();
+    } catch (e) {
+      console.error('Failed to record uploaded file:', e);
+    }
     res.json({ status: "success", url });
   });
 
@@ -82,6 +151,73 @@ async function startServer() {
       res.json({ status: "success", message: "Connected to Neon Database!", data: result.rows[0] });
     } catch (err) {
       res.status(500).json({ status: "error", message: "Database connection failed", error: (err as any).message });
+    }
+  });
+
+  // ─── AUTHENTICATION ENDPOINTS ────────────────────────────────────────────
+  app.post("/api/auth/signup", async (req, res) => {
+    const { email, password, displayName } = req.body;
+    if (!email || !password) return res.status(400).json({ status: "error", message: "Email and password required." });
+    try {
+      const client = await pool.connect();
+      const uid = `user-${Date.now()}`;
+      await client.query(
+        'INSERT INTO users (uid, email, password, display_name) VALUES ($1, $2, $3, $4)',
+        [uid, email, password, displayName]
+      );
+      client.release();
+      res.json({ status: "success", user: { uid, email, displayName, photoURL: null } });
+    } catch (err: any) {
+      if (err.code === '23505') {
+        res.status(400).json({ status: "error", message: "Email already in use." });
+      } else {
+        res.status(500).json({ status: "error", message: "Signup failed." });
+      }
+    }
+  });
+
+  app.post("/api/auth/login", async (req, res) => {
+    const { email, password } = req.body;
+    if (!email || !password) return res.status(400).json({ status: "error", message: "Email and password required." });
+    try {
+      const client = await pool.connect();
+      const result = await client.query('SELECT * FROM users WHERE email = $1 AND password = $2', [email, password]);
+      client.release();
+      if (result.rows.length === 0) {
+        return res.status(401).json({ status: "error", message: "Invalid credentials." });
+      }
+      const user = result.rows[0];
+      res.json({ status: "success", user: { uid: user.uid, email: user.email, displayName: user.display_name, photoURL: user.photo_url } });
+    } catch (err) {
+      res.status(500).json({ status: "error", message: "Login failed." });
+    }
+  });
+
+  // ─── CRM LEADS (Replaces Firestore logic) ────────────────────────────────
+  app.get("/api/db/leads", async (req, res) => {
+    try {
+      const client = await pool.connect();
+      const result = await client.query('SELECT * FROM creativenode_leads ORDER BY created_at DESC');
+      client.release();
+      res.json({ status: "success", data: result.rows });
+    } catch (err) {
+      res.status(500).json({ status: "error", message: "Failed to fetch leads" });
+    }
+  });
+
+  app.post("/api/db/leads", async (req, res) => {
+    const { name, email, service } = req.body;
+    const id = `lead-${Date.now()}`;
+    try {
+      const client = await pool.connect();
+      await client.query(
+        'INSERT INTO creativenode_leads (id, name, email, service) VALUES ($1, $2, $3, $4)',
+        [id, name, email, service]
+      );
+      client.release();
+      res.json({ status: "success", id });
+    } catch (err) {
+      res.status(500).json({ status: "error", message: "Failed to create lead" });
     }
   });
 

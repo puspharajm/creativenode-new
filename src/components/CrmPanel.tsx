@@ -8,7 +8,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { PosterTemplate } from '../types';
-import { LOCAL_ADMIN } from '../firebase';
+import { auth } from '../auth';
 import { 
   LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, 
   Tooltip, ResponsiveContainer, Legend, PieChart, Pie, Cell 
@@ -490,7 +490,7 @@ export default function CrmPanel({
       timestamp: Date.now(),
       action,
       details: logDetails,
-      adminEmail: LOCAL_ADMIN.email || 'admin@creativenode.in'
+      adminEmail: auth.currentUser?.email || 'admin@creativenode.in'
     };
     try {
       await fetch('/api/db/audit-logs', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...logData }) });

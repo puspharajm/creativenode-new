@@ -1,7 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { initializeApp } from 'firebase/app';
-import { getAuth, signInAnonymously, onAuthStateChanged } from 'firebase/auth';
-import { getFirestore, collection, addDoc, onSnapshot, serverTimestamp } from 'firebase/firestore';
+
 import { 
   CheckCircle, ChevronRight, Layout, Monitor, Smartphone, PenTool, 
   Share2, Award, Zap, Clock, Star, Instagram, Globe, Mail, Phone,
@@ -1321,68 +1319,21 @@ export default function CreativenodePortfolio({ onBack, triggerToast }: Creative
     }
   };
 
-  // Initialize Firebase for CRM Storage
+  // Fetch CRM Leads from Neon API with LocalStorage fallback
   useEffect(() => {
-    try {
-      const firebaseConfig = JSON.parse(typeof (window as any).__firebase_config !== 'undefined' ? (window as any).__firebase_config : '{}');
-      if (Object.keys(firebaseConfig).length === 0) return;
-      
-      const app = initializeApp(firebaseConfig);
-      const auth = getAuth(app);
-      
-      const initAuth = async () => {
-        await signInAnonymously(auth);
-      };
-      initAuth();
-      
-      const unsubscribe = onAuthStateChanged(auth, setUser);
-      return () => unsubscribe();
-    } catch (e) {
-      console.log("Firebase not configured in this environment.");
-    }
-  }, []);
-
-  // Fetch CRM Data from Firebase with LocalStorage Fallback
-  useEffect(() => {
-    const loadLocalSubmissions = () => {
-      try {
+    fetch('/api/db/leads')
+      .then(r => r.json())
+      .then(res => {
+        if (res.status === 'success') {
+          setSubmissions(res.data);
+          localStorage.setItem('creativenode_leads', JSON.stringify(res.data));
+        }
+      })
+      .catch(() => {
         const local = localStorage.getItem('creativenode_leads');
         if (local) setSubmissions(JSON.parse(local));
-      } catch (e) { console.error("Local storage error", e); }
-    };
-
-    if (!user) {
-      loadLocalSubmissions();
-      return;
-    }
-    
-    try {
-      const db = getFirestore();
-      const appId = typeof (window as any).__app_id !== 'undefined' ? (window as any).__app_id : 'default-app-id';
-      const q = collection(db, 'artifacts', appId, 'public', 'data', 'creativenode_leads');
-      
-      const unsubscribe = onSnapshot(q, (snapshot) => {
-        const leads: any[] = [];
-        snapshot.forEach((doc) => leads.push({ id: doc.id, ...doc.data() }));
-        // Sort newest first
-        leads.sort((a, b) => {
-          const timeA = a.createdAt?.toMillis ? a.createdAt.toMillis() : new Date(a.createdAt || 0).getTime();
-          const timeB = b.createdAt?.toMillis ? b.createdAt.toMillis() : new Date(b.createdAt || 0).getTime();
-          return timeB - timeA;
-        });
-        setSubmissions(leads);
-        localStorage.setItem('creativenode_leads', JSON.stringify(leads));
-      }, (error) => {
-        console.warn("Firestore permission denied. Using LocalStorage fallback.");
-        loadLocalSubmissions();
       });
-      
-      return () => unsubscribe();
-    } catch (e) {
-      console.warn("Firestore error:", e);
-      loadLocalSubmissions();
-    }
-  }, [user]);
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -1398,26 +1349,19 @@ export default function CreativenodePortfolio({ onBack, triggerToast }: Creative
     };
 
     try {
-      let savedToFirebase = false;
-      if (user) {
-        try {
-          const db = getFirestore();
-          const appId = typeof (window as any).__app_id !== 'undefined' ? (window as any).__app_id : 'default-app-id';
-          await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'creativenode_leads'), {
-            ...formData,
-            createdAt: serverTimestamp()
-          });
-          savedToFirebase = true;
-        } catch (err) {
-          console.warn("Firestore save denied. Falling back to local storage.");
-        }
-      }
-
-      if (!savedToFirebase) {
-        const existing = JSON.parse(localStorage.getItem('creativenode_leads') || '[]');
-        const updated = [newLead, ...existing];
+      const apiRes = await fetch('/api/db/leads', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(formData)
+      });
+      const result = await apiRes.json();
+      
+      if (result.status === 'success') {
+        const updated = [{ ...newLead, id: result.id || newLead.id }, ...submissions];
         localStorage.setItem('creativenode_leads', JSON.stringify(updated));
         setSubmissions(updated);
+      } else {
+        throw new Error("API Error");
       }
 
       setSubmitStatus('success');
@@ -1426,7 +1370,17 @@ export default function CreativenodePortfolio({ onBack, triggerToast }: Creative
       setTimeout(() => setSubmitStatus(null), 5000);
     } catch (error) {
       console.error("Submission error:", error);
-      setSubmitStatus('error');
+      
+      // Fallback
+      const existing = JSON.parse(localStorage.getItem('creativenode_leads') || '[]');
+      const updated = [newLead, ...existing];
+      localStorage.setItem('creativenode_leads', JSON.stringify(updated));
+      setSubmissions(updated);
+      
+      setSubmitStatus('success');
+      setFormData({ name: '', email: '', service: 'Social Media Posters' });
+      if (triggerToast) triggerToast("Inquiry received locally! Will sync later.", "success");
+      setTimeout(() => setSubmitStatus(null), 5000);
     } finally {
       setIsSubmitting(false);
     }

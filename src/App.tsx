@@ -1,4 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { Navbar } from './components/Navbar';
+import { auth, LocalUser } from './auth';
 import { 
   Sparkles, Layers, Compass, Coins, MessageSquare, ArrowRight, Phone, Instagram, 
   Menu, X, Award, Shield, Zap, Heart, CheckCircle, ExternalLink, HelpCircle, Eye, RefreshCw,
@@ -23,7 +26,6 @@ import ProjectQRCode from './components/ProjectQRCode';
 import PortfolioCard from './components/PortfolioCard';
 import CrmPanel from './components/CrmPanel';
 import CreativenodePortfolio from './components/CreativenodePortfolio';
-import { LOCAL_ADMIN, LocalUser } from './firebase';
 
 const THEME_STYLES: Record<string, {
   name: string;
@@ -180,6 +182,58 @@ const THEME_STYLES: Record<string, {
     cardBg: '#0f0524',
     cardBorder: '#3b0764',
     glow: 'rgba(217, 70, 239, 0.08)'
+  },
+  'platinum-elite': {
+    name: 'Platinum Elite',
+    isDark: true,
+    bg: '#0a0a0c',
+    text: '#fafafa',
+    textMuted: '#a3a3a3',
+    border: '#1a1a1d',
+    borderMuted: '#2a2a2e',
+    accent: '#e5e7eb', // Platinum
+    cardBg: '#111113',
+    cardBorder: '#1e1e21',
+    glow: 'rgba(229, 231, 235, 0.04)'
+  },
+  'midnight-amethyst': {
+    name: 'Midnight Amethyst',
+    isDark: true,
+    bg: '#0d0618',
+    text: '#f5f0fa',
+    textMuted: '#c4b5d8',
+    border: '#1e1030',
+    borderMuted: '#2d1b45',
+    accent: '#c084fc', // Amethyst
+    cardBg: '#140a24',
+    cardBorder: '#23143a',
+    glow: 'rgba(192, 132, 252, 0.06)'
+  },
+  'rose-gold-royale': {
+    name: 'Rose Gold Royale',
+    isDark: true,
+    bg: '#1a0d10',
+    text: '#fff1f3',
+    textMuted: '#fda4af',
+    border: '#33181f',
+    borderMuted: '#4a1d28',
+    accent: '#f43f5e', // Rose Gold
+    cardBg: '#200f15',
+    cardBorder: '#3d1720',
+    glow: 'rgba(244, 63, 94, 0.05)'
+  },
+  'carbon-fiber': {
+    name: 'Carbon Fiber',
+    isDark: true,
+    bg: '#080808',
+    text: '#eaeaea',
+    textMuted: '#888888',
+    border: '#181818',
+    borderMuted: '#282828',
+    accent: '#a0a0a0', // Brushed steel
+    cardBg: '#0d0d0d',
+    cardBorder: '#1a1a1a',
+    glow: 'rgba(160, 160, 160, 0.03)'
   }
 };
 
@@ -539,10 +593,12 @@ export default function App() {
     }
   }, [viewingProject]);
 
-  // Local mock-auth: always sign in as the sovereign admin
+  // Listen to auth state
   useEffect(() => {
-    setUser(LOCAL_ADMIN);
-    setUserLoading(false);
+    const unsubscribe = auth.onAuthStateChanged((user) => {
+      setUser(user);
+      setUserLoading(false);
+    });
     const savedTheme = localStorage.getItem('creativenode_global_theme');
     if (savedTheme && THEME_STYLES[savedTheme]) {
       setAppTheme(savedTheme);

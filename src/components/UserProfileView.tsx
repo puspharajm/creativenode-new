@@ -5,7 +5,7 @@ import {
   Edit2, Upload, Check, X, Download, History
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { LocalUser } from '../firebase';
+import { LocalUser, auth } from '../auth';
 import { PORTFOLIO_PRESETS } from '../data';
 import { PosterTemplate } from '../types';
 
@@ -307,8 +307,9 @@ export default function UserProfileView({
     }
   };
 
-  const handleLogout = () => {
-    // Local auth: just clear stored data
+  const handleLogout = async () => {
+    // Local auth: clear stored data and sign out
+    await auth.signOut();
     localStorage.removeItem('creativenode_profile_name');
     localStorage.removeItem('creativenode_profile_avatar');
     window.location.reload();
@@ -574,15 +575,15 @@ export default function UserProfileView({
                 <Settings className="w-4 h-4 text-gold-400" /> Account Level Manager
               </h3>
               <p className="text-zinc-500 text-[11px] mt-1 leading-normal">
-                Choose a pricing subscription archetype below to immediately simulate or manage your account limit privileges in real-time.
+                Choose a one-time license archetype below to immediately simulate or manage your account limit privileges in real-time. No recurring subscriptions.
               </p>
             </div>
 
             <div className="space-y-2.5">
               {[
                 { id: 'free', label: 'Free Tier', quota: '2 designs per day', desc: 'Baseline explore access' },
-                { id: 'pro', label: 'Pro Suite', quota: '5 designs per day', desc: 'Full branding lookbook scale' },
-                { id: 'sovereign', label: 'Sovereign Rank', quota: 'Unlimited designs', desc: 'No limits physical vector blueprint exports' }
+                { id: 'pro', label: 'Pro Suite (One-Time)', quota: '5 designs per day', desc: 'Lifetime branding lookbook access' },
+                { id: 'sovereign', label: 'Sovereign Rank (Lifetime)', quota: 'Unlimited designs', desc: 'One-time fee for unlimited physical exports' }
               ].map((tier) => (
                 <button
                   key={tier.id}
@@ -591,7 +592,7 @@ export default function UserProfileView({
                     if (user) {
                       localStorage.setItem(`creativenode_user_tier_${user.uid}`, tier.id);
                     }
-                    setShowConfirmation(`Switched subscription to "${tier.label}" successfully!`);
+                    setShowConfirmation(`Upgraded to "${tier.label}" one-time license successfully!`);
                     setTimeout(() => setShowConfirmation(null), 3000);
                   }}
                   className={`w-full p-3.5 rounded-xl border text-left flex justify-between items-center transition cursor-pointer select-none ${
@@ -628,9 +629,9 @@ export default function UserProfileView({
                 />
               </div>
               <p className="text-[10px] text-zinc-500 leading-snug">
-                {userTier === 'free' && "Free user designs reset at midnight. Upgrade to eliminate limits."}
-                {userTier === 'pro' && "Pro Suite VIP active. 5 layout generations allowed daily."}
-                {userTier === 'sovereign' && "Sovereign direct channel. No maximum design restrictions!"}
+                {userTier === 'free' && "Free user designs reset at midnight. Upgrade with a one-time payment to eliminate limits."}
+                {userTier === 'pro' && "Pro Suite VIP active (Lifetime). 5 layout generations allowed daily."}
+                {userTier === 'sovereign' && "Sovereign direct channel (Lifetime). No maximum design restrictions!"}
               </p>
             </div>
           </motion.div>
