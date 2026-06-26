@@ -655,6 +655,107 @@ app.use(express.json({ limit: '50mb' }));
     }
   });
 
+  // ─── AI IMAGE ANALYSIS FOR POSTER GENERATION ─────────────────────────────
+  app.post("/api/analyze-image", async (req, res) => {
+    const { imageUrl } = req.body;
+    const apiKey = process.env.GEMINI_API_KEY;
+
+    if (!imageUrl) {
+        return res.status(400).json({ error: "Image URL is required" });
+    }
+
+    try {
+       let fileDataBuffer: Buffer;
+       let mimeType = "image/jpeg";
+       
+       if (imageUrl.startsWith("http")) {
+           // Fetch from S3/external
+           const imgRes = await fetch(imageUrl);
+           const arrayBuffer = await imgRes.arrayBuffer();
+           fileDataBuffer = Buffer.from(arrayBuffer);
+           mimeType = imgRes.headers.get("content-type") || "image/jpeg";
+       } else {
+           const fileId = imageUrl.replace("/uploads/", "");
+           const client = await pool.connect();
+           const result = await client.query('SELECT file_data, content_type FROM uploaded_files WHERE id = $1', [fileId]);
+           client.release();
+           
+           if (result.rows.length === 0 || !result.rows[0].file_data) {
+               // check local disk
+               const filePath = path.join(process.cwd(), "uploads", fileId);
+               if (fs.existsSync(filePath)) {
+                   fileDataBuffer = fs.readFileSync(filePath);
+                   mimeType = "image/jpeg";
+               } else {
+                   return res.status(404).json({ error: "Image not found in database or disk" });
+               }
+           } else {
+               fileDataBuffer = result.rows[0].file_data;
+               mimeType = result.rows[0].content_type || "image/jpeg";
+           }
+       }
+       
+       if (!apiKey) {
+           return res.json({
+               brandName: "AutoBrand",
+               title: "Auto Generated Poster",
+               subtitle: "AI Vision Fallback",
+               details: "This is a placeholder because Gemini API key is missing.",
+               keywords: "Auto, Generated, Design",
+               accentColor: "#d4af37"
+           });
+       }
+       
+       const ai = new GoogleGenAI({ apiKey, httpOptions: { headers: { "User-Agent": "aistudio-build" } } });
+       
+       const prompt = `Analyze this image. If there are any logos, text, or clear branding, infer the Brand Name. If not, generate a highly creative and suitable Brand Name based on the image's vibe.
+Provide the following in JSON format:
+- brandName: The inferred or generated brand name.
+- title: A short, catchy, premium advertising title for a poster featuring this image.
+- subtitle: A compelling subtitle.
+- details: A 1-2 sentence descriptive narrative for the poster.
+- keywords: 3-5 comma-separated keywords describing the mood/style.
+- accentColor: A recommended hex color code (e.g. #d4af37) that complements the image beautifully.`;
+
+       const response = await ai.models.generateContent({
+         model: "gemini-2.5-flash",
+         contents: [
+             prompt,
+             {
+                 inlineData: {
+                     data: fileDataBuffer.toString("base64"),
+                     mimeType: mimeType
+                 }
+             }
+         ],
+         config: {
+           responseMimeType: "application/json",
+           responseSchema: {
+             type: Type.OBJECT,
+             properties: {
+               brandName: { type: Type.STRING },
+               title: { type: Type.STRING },
+               subtitle: { type: Type.STRING },
+               details: { type: Type.STRING },
+               keywords: { type: Type.STRING },
+               accentColor: { type: Type.STRING }
+             },
+             required: ["brandName", "title", "subtitle", "details", "keywords", "accentColor"]
+           }
+         }
+       });
+       
+       if (response.text) {
+         return res.json(JSON.parse(response.text.trim()));
+       }
+       throw new Error("Empty response");
+    } catch (err) {
+       console.error("Image Analysis Error:", err);
+       return res.status(500).json({ error: "Failed to analyze image" });
+    }
+  });
+
+
   // ─── SERVE VITE OR STATIC ─────────────────────────────────────────────────
   // Export the app for Vercel Serverless Functions
   export default app;

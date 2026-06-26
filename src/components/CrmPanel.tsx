@@ -355,6 +355,7 @@ export default function CrmPanel({
   // AI Generation State
   const [brandName, setBrandName] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isAnalyzingImage, setIsAnalyzingImage] = useState(false);
 
   // New features declarations block
   const [drawerPoster, setDrawerPoster] = useState<PosterTemplate | null>(null);
@@ -2622,6 +2623,35 @@ export default function CrmPanel({
                                             if (uploadJson.status === 'success') {
                                               setBgValue(uploadJson.url);
                                               triggerToast("Background asset successfully uploaded & bound!", "success");
+                                              
+                                              // Auto AI Analysis from Upload
+                                              triggerToast("Analyzing image with AI Vision to auto-fill poster data...", "info");
+                                              setIsAnalyzingImage(true);
+                                              try {
+                                                const aiRes = await fetch('/api/analyze-image', {
+                                                  method: 'POST',
+                                                  headers: { 'Content-Type': 'application/json' },
+                                                  body: JSON.stringify({ imageUrl: uploadJson.url })
+                                                });
+                                                const aiData = await aiRes.json();
+                                                
+                                                if (aiData.error) {
+                                                  triggerToast(`AI Vision failed: ${aiData.error}`, "alert");
+                                                } else {
+                                                  if (aiData.brandName) setBrandName(aiData.brandName);
+                                                  if (aiData.title) setTitle(aiData.title);
+                                                  if (aiData.subtitle) setSubtitle(aiData.subtitle);
+                                                  if (aiData.details) setDetails(aiData.details);
+                                                  if (aiData.keywords) setKeywordsString(aiData.keywords);
+                                                  if (aiData.accentColor) setAccentColor(aiData.accentColor);
+                                                  triggerToast("Poster specification auto-generated from image!", "success");
+                                                }
+                                              } catch (e) {
+                                                triggerToast("AI Vision network error.", "alert");
+                                              } finally {
+                                                setIsAnalyzingImage(false);
+                                              }
+                                              
                                             } else {
                                               throw new Error(uploadJson.message);
                                             }
@@ -2639,9 +2669,9 @@ export default function CrmPanel({
                               />
                               <label
                                 htmlFor="crm-poster-file-upload-input"
-                                className="inline-flex py-1.5 px-3 bg-zinc-900 border border-zinc-800 text-[8.5px] font-mono rounded text-zinc-300 font-extrabold cursor-pointer transition hover:bg-zinc-850 hover:border-gold-500/25 uppercase select-none"
+                                className={`inline-flex py-1.5 px-3 bg-zinc-900 border border-zinc-800 text-[8.5px] font-mono rounded text-zinc-300 font-extrabold cursor-pointer transition uppercase select-none ${isAnalyzingImage ? 'opacity-50 cursor-wait' : 'hover:bg-zinc-850 hover:border-gold-500/25'}`}
                               >
-                                Select portrait image
+                                {isAnalyzingImage ? <><RefreshCw className="w-3 h-3 animate-spin mr-1.5 inline"/> Analyzing Image...</> : "Select portrait image"}
                               </label>
                             </div>
                           )}
