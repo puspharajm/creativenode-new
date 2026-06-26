@@ -2443,7 +2443,7 @@ export default function App() {
       {/* Main Container */}
       <main id="top" className="relative flex flex-col md:flex-row w-full max-w-[100vw] overflow-x-hidden bg-[#0a0a0c]">
         {/* Left Ad Slot */}
-        <div className="hidden md:block md:w-[10%] flex-shrink-0 border-r border-zinc-900/40 relative">
+        <div className="hidden md:block md:w-[15%] flex-shrink-0 border-r border-zinc-900/40 relative">
           <div className="sticky top-24 pt-8 pb-8 flex justify-center">
       {/* Google AdSense left */}
       <ins className="adsbygoogle"
@@ -2455,7 +2455,7 @@ export default function App() {
     </div>
   </div>
         {/* Center Content */}
-        <div className="w-full md:w-[80%] flex-1">
+        <div className="w-full md:w-[70%] flex-1">
           {activeTab === 'crm' && user && userTier === 'sovereign' ? (
           <CrmPanel 
             posters={posters} 
@@ -3508,7 +3508,7 @@ export default function App() {
         </div>
 
         {/* Right Ad Slot */}
-        <div className="hidden md:block md:w-[10%] flex-shrink-0 border-l border-zinc-900/40 relative">
+        <div className="hidden md:block md:w-[15%] flex-shrink-0 border-l border-zinc-900/40 relative">
           <div className="sticky top-24 pt-8 pb-8 flex justify-center">
             {/* Google AdSense right */}
             <ins className="adsbygoogle"
