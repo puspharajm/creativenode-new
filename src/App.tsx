@@ -2160,7 +2160,23 @@ export default function App() {
   return (
     <LanguageProvider>
     <GoogleOAuthProvider clientId={import.meta.env.VITE_GOOGLE_CLIENT_ID || ""}>
-      <div className="min-h-screen bg-zinc-950 text-zinc-300 font-sans relative selection:bg-gold-400 selection:text-black transition-colors duration-300">
+      <div className="min-h-screen bg-zinc-950 text-zinc-300 font-sans relative selection:bg-gold-400 selection:text-black transition-colors duration-300 flex flex-col md:flex-row w-full max-w-[100vw] overflow-x-hidden">
+      
+      {/* Left Ad Slot (GLOBAL) */}
+      <aside className="hidden md:block md:w-[15%] flex-shrink-0 border-r border-zinc-900/40 relative bg-[#0a0a0c] z-10">
+        <div className="sticky top-0 h-screen overflow-y-auto overflow-x-hidden flex flex-col items-center justify-start pt-24 pb-8 custom-scrollbar">
+          {/* Google AdSense left */}
+          <ins className="adsbygoogle"
+               style={{display:"block", minWidth: "120px"}}
+               data-ad-client="ca-pub-7665211760721884"
+               data-ad-slot="XXXXXXXXXX"
+               data-ad-format="auto"
+               data-full-width-responsive="true"></ins>
+        </div>
+      </aside>
+
+      {/* Center Wrapper for Header, Main, Footer */}
+      <div className="w-full md:w-[70%] flex-1 flex flex-col min-h-screen relative overflow-x-hidden">
       
       {/* Exquisite Vibe Style Adapter Style-Tag */}
       <style>{`
@@ -2441,21 +2457,7 @@ export default function App() {
       </header>
 
       {/* Main Container */}
-      <main id="top" className="relative flex flex-col md:flex-row w-full max-w-[100vw] overflow-x-hidden bg-[#0a0a0c]">
-        {/* Left Ad Slot */}
-        <div className="hidden md:block md:w-[15%] flex-shrink-0 border-r border-zinc-900/40 relative">
-          <div className="sticky top-24 pt-8 pb-8 flex justify-center">
-      {/* Google AdSense left */}
-      <ins className="adsbygoogle"
-           style={{display:"block"}}
-           data-ad-client="ca-pub-7665211760721884"
-           data-ad-slot="XXXXXXXXXX"
-           data-ad-format="auto"
-           data-full-width-responsive="true"></ins>
-    </div>
-  </div>
-        {/* Center Content */}
-        <div className="w-full md:w-[70%] flex-1">
+      <main id="top" className="relative flex-1 bg-[#0a0a0c]">
           {activeTab === 'crm' && user && userTier === 'sovereign' ? (
           <CrmPanel 
             posters={posters} 
@@ -3505,20 +3507,6 @@ export default function App() {
         </section>
           </>
           )}
-        </div>
-
-        {/* Right Ad Slot */}
-        <div className="hidden md:block md:w-[15%] flex-shrink-0 border-l border-zinc-900/40 relative">
-          <div className="sticky top-24 pt-8 pb-8 flex justify-center">
-            {/* Google AdSense right */}
-            <ins className="adsbygoogle"
-                 style={{display:"block", minWidth: "120px"}}
-                 data-ad-client="ca-pub-7665211760721884"
-                 data-ad-slot="XXXXXXXXXX"
-                 data-ad-format="auto"
-                 data-full-width-responsive="true"></ins>
-          </div>
-        </div>
       </main>
 
       {/* Exquisite Footer */}
@@ -3540,6 +3528,20 @@ export default function App() {
           </div>
         </div>
       </footer>
+      </div>
+
+      {/* Right Ad Slot (GLOBAL) */}
+      <aside className="hidden md:block md:w-[15%] flex-shrink-0 border-l border-zinc-900/40 relative bg-[#0a0a0c] z-10">
+        <div className="sticky top-0 h-screen overflow-y-auto overflow-x-hidden flex flex-col items-center justify-start pt-24 pb-8 custom-scrollbar">
+          {/* Google AdSense right */}
+          <ins className="adsbygoogle"
+               style={{display:"block", minWidth: "120px"}}
+               data-ad-client="ca-pub-7665211760721884"
+               data-ad-slot="XXXXXXXXXX"
+               data-ad-format="auto"
+               data-full-width-responsive="true"></ins>
+        </div>
+      </aside>
 
       {/* Portfolio Item Detail View Modal */}
       <AnimatePresence>
