@@ -2441,10 +2441,10 @@ export default function App() {
       </header>
 
       {/* Main Container */}
-      <main id="top" className="relative">
-  {/* Left Ad Slot */}
-  <div className="hidden md:block w-[180px] flex-shrink-0">
-    <div className="mt-8">
+      <main id="top" className="relative flex flex-col md:flex-row w-full max-w-[100vw] overflow-x-hidden bg-[#0a0a0c]">
+        {/* Left Ad Slot */}
+        <div className="hidden md:block md:w-[10%] flex-shrink-0 border-r border-zinc-900/40 relative">
+          <div className="sticky top-24 pt-8 pb-8 flex justify-center">
       {/* Google AdSense left */}
       <ins className="adsbygoogle"
            style={{display:"block"}}
@@ -2454,7 +2454,9 @@ export default function App() {
            data-full-width-responsive="true"></ins>
     </div>
   </div>
-        {activeTab === 'crm' && user && userTier === 'sovereign' ? (
+        {/* Center Content */}
+        <div className="w-full md:w-[80%] flex-1">
+          {activeTab === 'crm' && user && userTier === 'sovereign' ? (
           <CrmPanel 
             posters={posters} 
             setPosters={setPosters} 
@@ -3502,20 +3504,22 @@ export default function App() {
           </div>
         </section>
           </>
-        )}
-      {/* Right Ad Slot */}
-  <div className="hidden md:block w-[180px] flex-shrink-0">
-    <div className="mt-8">
-      {/* Google AdSense right */}
-      <ins className="adsbygoogle"
-           style={{display:"block"}}
-           data-ad-client="ca-pub-7665211760721884"
-           data-ad-slot="XXXXXXXXXX"
-           data-ad-format="auto"
-           data-full-width-responsive="true"></ins>
-    </div>
-  </div>
-</main>
+          )}
+        </div>
+
+        {/* Right Ad Slot */}
+        <div className="hidden md:block md:w-[10%] flex-shrink-0 border-l border-zinc-900/40 relative">
+          <div className="sticky top-24 pt-8 pb-8 flex justify-center">
+            {/* Google AdSense right */}
+            <ins className="adsbygoogle"
+                 style={{display:"block", minWidth: "120px"}}
+                 data-ad-client="ca-pub-7665211760721884"
+                 data-ad-slot="XXXXXXXXXX"
+                 data-ad-format="auto"
+                 data-full-width-responsive="true"></ins>
+          </div>
+        </div>
+      </main>
 
       {/* Exquisite Footer */}
       <footer className="bg-zinc-950 border-t border-zinc-900 py-12 px-4 md:px-8 text-center text-xs relative z-10">
