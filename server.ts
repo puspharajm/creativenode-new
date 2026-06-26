@@ -193,7 +193,13 @@ app.use(express.json({ limit: '50mb' }));
 
       const file = result.rows[0];
       res.setHeader("Content-Type", file.content_type || "image/jpeg");
-      res.send(file.file_data);
+      
+      let buffer = file.file_data;
+      if (typeof buffer === 'string' && buffer.startsWith('\\x')) {
+        buffer = Buffer.from(buffer.slice(2), 'hex');
+      }
+      
+      res.send(buffer);
     } catch (err) {
       console.error("Failed to serve file from DB:", err);
       res.status(500).send("Error retrieving file");
@@ -690,8 +696,12 @@ app.use(express.json({ limit: '50mb' }));
                    return res.status(404).json({ error: "Image not found in database or disk" });
                }
            } else {
-               fileDataBuffer = result.rows[0].file_data;
-               mimeType = result.rows[0].content_type || "image/jpeg";
+                let rawData = result.rows[0].file_data;
+                if (typeof rawData === 'string' && rawData.startsWith('\\x')) {
+                  rawData = Buffer.from(rawData.slice(2), 'hex');
+                }
+                fileDataBuffer = rawData;
+                mimeType = result.rows[0].content_type || "image/jpeg";
            }
        }
        
