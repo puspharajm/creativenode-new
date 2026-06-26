@@ -2160,7 +2160,7 @@ export default function App() {
   return (
     <LanguageProvider>
     <GoogleOAuthProvider clientId={import.meta.env.VITE_GOOGLE_CLIENT_ID || ""}>
-      <div className="min-h-screen bg-zinc-950 text-zinc-300 font-sans relative selection:bg-gold-400 selection:text-black transition-colors duration-300 flex flex-col md:flex-row w-full max-w-[100vw] overflow-x-hidden">
+      <div className="min-h-screen bg-zinc-950 text-zinc-300 font-sans relative selection:bg-gold-400 selection:text-black transition-colors duration-300 flex flex-col md:flex-row w-full max-w-[100vw]">
       
       {/* Left Ad Slot (GLOBAL) */}
       <aside className="hidden md:block md:w-[15%] flex-shrink-0 border-r border-zinc-900/40 relative bg-[#0a0a0c] z-10">
@@ -2176,7 +2176,7 @@ export default function App() {
       </aside>
 
       {/* Center Wrapper for Header, Main, Footer */}
-      <div className="w-full md:w-[70%] flex-1 flex flex-col min-h-screen relative overflow-x-hidden">
+      <div className="w-full md:w-[70%] flex-1 flex flex-col min-h-screen relative">
       
       {/* Exquisite Vibe Style Adapter Style-Tag */}
       <style>{`
