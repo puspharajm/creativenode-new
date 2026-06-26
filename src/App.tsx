@@ -2568,7 +2568,7 @@ export default function App() {
           <>
 
         {/* Hero Section: Majestic Deep-Noir and gold presentation */}
-        <section className="relative min-h-[85vh] flex flex-col justify-center py-16 container mx-auto overflow-hidden">
+        <section className="relative min-h-[85vh] flex flex-col justify-center py-16 w-full max-w-7xl mx-auto px-4 md:px-8 overflow-hidden">
           {/* Subtle Ambient light spots */}
           <div className="absolute top-20 left-10 w-96 h-96 rounded-full bg-gold-950/15 blur-3xl pointer-events-none" />
           <div className="absolute bottom-20 right-10 w-96 h-96 rounded-full bg-amber-900/10 blur-3xl pointer-events-none" />
@@ -2973,7 +2973,7 @@ export default function App() {
             </div>
 
 {/* Portfolio Bento Box Grid wrapped in layout animated containers */}
-             <motion.div layout className="grid gap-6 [&_> *]:min-w-[260px] [&_> *]:flex-1">
+             <motion.div layout className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                <AnimatePresence mode="popLayout">
                  {isSearchingActive ? (
                    // Shimmering real-time searching skeleton loading indicators
@@ -3077,7 +3077,7 @@ export default function App() {
             </div>
 
 {/* Grid structure (responsive cards) */}
-             <div className="grid gap-6 [&_> *]:min-w-[260px] [&_> *]:flex-1">
+             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                {SERVICE_ITEMS.map((service) => (
                  <div 
                    key={service.id}
