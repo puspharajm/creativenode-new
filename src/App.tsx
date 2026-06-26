@@ -249,29 +249,29 @@ function HeroTranslatedContent() {
   const { t } = useLanguage();
   return (
     <>
-      <h1 className="font-display text-4xl sm:text-5xl lg:text-7xl font-bold tracking-tight text-white leading-none">
+      <h1 className="font-display text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight text-white leading-none">
         {t('hero_headline_1')} <br />
         <span className="font-editorial italic font-normal text-gold-400 bg-gradient-to-r from-gold-300 via-gold-400 to-amber-600 bg-clip-text text-transparent">
           {t('hero_headline_2')}
         </span>
       </h1>
 
-      <p className="font-sans text-sm md:text-base leading-relaxed text-zinc-400 max-w-xl mx-auto lg:mx-0">
+      <p className="font-sans text-sm leading-relaxed text-zinc-400 max-w-xl mx-auto">
         {t('hero_body')}
       </p>
 
       {/* Statistics Row */}
-      <div className="grid grid-cols-3 gap-4 py-6 border-y border-zinc-900 max-w-lg mx-auto lg:mx-0">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 py-6 border-y border-zinc-900 max-w-lg mx-auto">
         <div>
-          <span className="font-outfit text-2xl md:text-3xl font-extrabold text-gold-400 block">2,400+</span>
+          <span className="font-outfit text-xl sm:text-2xl lg:text-3xl font-extrabold text-gold-400 block">2,400+</span>
           <span className="font-mono text-[9px] text-zinc-500 tracking-wider uppercase block">{t('hero_stat_1_label')}</span>
         </div>
         <div>
-          <span className="font-outfit text-2xl md:text-3xl font-extrabold text-white block">99.8%</span>
+          <span className="font-outfit text-xl sm:text-2xl lg:text-3xl font-extrabold text-white block">99.8%</span>
           <span className="font-mono text-[9px] text-zinc-500 tracking-wider uppercase block">{t('hero_stat_2_label')}</span>
         </div>
         <div>
-          <span className="font-outfit text-2xl md:text-3xl font-extrabold text-white block">24 HR</span>
+          <span className="font-outfit text-xl sm:text-2xl lg:text-3xl font-extrabold text-white block">24 HR</span>
           <span className="font-mono text-[9px] text-zinc-500 tracking-wider uppercase block">{t('hero_stat_3_label')}</span>
         </div>
       </div>
@@ -294,7 +294,7 @@ function HeroCtaButtons({ user, setActiveTab, setIsAuthPortalOpen, triggerToast 
             triggerToast("Please authenticate to configure canvas.", "info");
           }
         }}
-        className="bg-gold-500 hover:bg-gold-400 text-black font-display font-bold text-xs uppercase tracking-widest py-3 px-6 rounded-xl flex items-center justify-center gap-2 transition shadow shadow-gold-500/10 cursor-pointer"
+        className="bg-gold-500 hover:bg-gold-400 text-black font-display font-bold text-xs sm:text-sm uppercase tracking-widest py-3 px-6 rounded-xl flex items-center justify-center gap-2 transition shadow shadow-gold-500/10 cursor-pointer"
       >
         {t('hero_cta_primary')} <Sparkles className="w-4 h-4 text-black" />
       </button>
@@ -304,7 +304,7 @@ function HeroCtaButtons({ user, setActiveTab, setIsAuthPortalOpen, triggerToast 
           const el = document.getElementById('portfolio-section');
           if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
         }}
-        className="border border-zinc-800 hover:border-zinc-700 bg-zinc-900/30 hover:bg-zinc-900 text-white font-mono text-xs uppercase tracking-widest py-3 px-6 rounded-xl flex items-center justify-center gap-1.5 transition"
+        className="border border-zinc-800 hover:border-zinc-700 bg-zinc-900/30 hover:bg-zinc-900 text-white font-mono text-xs sm:text-sm uppercase tracking-widest py-3 px-6 rounded-xl flex items-center justify-center gap-1.5 transition"
       >
         {t('hero_cta_secondary')} <Layers className="w-3.5 h-3.5" />
       </button>
@@ -410,7 +410,13 @@ function ScrollRevealCard({ children, index }: ScrollRevealCardProps) {
 }
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState<'home' | 'portfolio' | 'atelier' | 'services' | 'investment' | 'profile' | 'crm' | 'inspiration' | 'designers' | 'agency_portfolio'>('home');
+  const [activeTab, setActiveTab] = useState<'home' | 'portfolio' | 'atelier' | 'services' | 'investment' | 'profile' | 'crm' | 'inspiration' | 'designers' | 'agency_portfolio'>(() => {
+    return (localStorage.getItem('creativenode_active_tab') as any) || 'home';
+  });
+
+  useEffect(() => {
+    localStorage.setItem('creativenode_active_tab', activeTab);
+  }, [activeTab]);
   const [adminPreviewPoster, setAdminPreviewPoster] = useState<PosterTemplate | null>(null);
   const [portfolioCategory, setPortfolioCategory] = useState<'all' | 'fitness' | 'fashion' | 'minimalist' | 'offers'>('all');
   const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null);
@@ -617,7 +623,10 @@ export default function App() {
   // Fetch custom posters from Neon DB on mount
   useEffect(() => {
     fetch('/api/db/custom-posters')
-      .then(r => r.json())
+      .then(res => {
+        if (!res.ok) throw new Error(`HTTP error ${res.status}`);
+        return res.json();
+      })
       .then(res => {
         if (res.status === 'success' && res.data.length > 0) {
           const customItems: PosterTemplate[] = res.data;
@@ -2433,6 +2442,18 @@ export default function App() {
 
       {/* Main Container */}
       <main id="top" className="relative">
+  {/* Left Ad Slot */}
+  <div className="hidden md:block w-[180px] flex-shrink-0">
+    <div className="mt-8">
+      {/* Google AdSense left */}
+      <ins className="adsbygoogle"
+           style={{display:"block"}}
+           data-ad-client="ca-pub-7665211760721884"
+           data-ad-slot="XXXXXXXXXX"
+           data-ad-format="auto"
+           data-full-width-responsive="true"></ins>
+    </div>
+  </div>
         {activeTab === 'crm' && user && userTier === 'sovereign' ? (
           <CrmPanel 
             posters={posters} 
@@ -2545,7 +2566,7 @@ export default function App() {
           <>
 
         {/* Hero Section: Majestic Deep-Noir and gold presentation */}
-        <section className="relative min-h-[85vh] flex flex-col justify-center py-16 px-4 md:px-8 max-w-7xl mx-auto overflow-hidden">
+        <section className="relative min-h-[85vh] flex flex-col justify-center py-16 container mx-auto overflow-hidden">
           {/* Subtle Ambient light spots */}
           <div className="absolute top-20 left-10 w-96 h-96 rounded-full bg-gold-950/15 blur-3xl pointer-events-none" />
           <div className="absolute bottom-20 right-10 w-96 h-96 rounded-full bg-amber-900/10 blur-3xl pointer-events-none" />
@@ -2566,67 +2587,80 @@ export default function App() {
 
             {/* Right Hero side (Interactive Spotlight Card carousel slider representation) */}
             <div className="lg:col-span-5 flex flex-col justify-center items-center">
-              <div className="w-full max-w-sm aspect-[4/5] bg-zinc-950 border border-zinc-900 rounded-2xl p-4 flex flex-col justify-between relative shadow-2xl relative overflow-hidden group">
-                
-                {/* Image under the vignette */}
-                <div 
-                  className="absolute inset-0 bg-cover bg-center transition-all duration-700 pointer-events-none"
-                  style={{ 
-                    backgroundImage: `url(${featuredHeroItems[heroIndex].bgValue})`,
-                    filter: 'brightness(0.65)'
-                  }}
-                />
-                
-                {/* Elegant overlay scrims */}
-                <div className="absolute inset-0 bg-gradient-to-t from-zinc-950 via-zinc-950/40 to-black/30 pointer-events-none" />
-                <div className="absolute inset-0 bg-grain mix-blend-overlay pointer-events-none" />
+              {featuredHeroItems.length > 0 ? (
+                <>
+                  <div className="w-full max-w-sm aspect-[4/5] bg-zinc-950 border border-zinc-900 rounded-2xl p-4 flex flex-col justify-between relative shadow-2xl overflow-hidden group">
+                    {/* Image under the vignette */}
+                    <div 
+                      className="absolute inset-0 bg-cover bg-center transition-all duration-700 pointer-events-none"
+                      style={{ 
+                        backgroundImage: `url(${featuredHeroItems[heroIndex]?.bgValue || ''})`,
+                        filter: 'brightness(0.65)'
+                      }}
+                    />
+                    
+                    {/* Elegant overlay scrims */}
+                    <div className="absolute inset-0 bg-gradient-to-t from-zinc-950 via-zinc-950/40 to-black/30 pointer-events-none" />
+                    <div className="absolute inset-0 bg-grain mix-blend-overlay pointer-events-none" />
 
-                {/* Top header stats */}
-                <div className="relative z-10 flex items-center justify-between font-mono text-[9px] text-gold-400">
-                  <span>SPOTLIGHT SERIES // 2026</span>
-                  <span className="bg-black/70 px-2 py-0.5 rounded border border-gold-900/60 font-bold">
-                    {heroIndex + 1} OF {featuredHeroItems.length}
-                  </span>
-                </div>
+                    {/* Top header stats */}
+                    <div className="relative z-10 flex items-center justify-between font-mono text-[9px] text-gold-400">
+                      <span>SPOTLIGHT SERIES // 2026</span>
+                      <span className="bg-black/70 px-2 py-0.5 rounded border border-gold-900/60 font-bold">
+                        {heroIndex + 1} OF {featuredHeroItems.length}
+                      </span>
+                    </div>
 
-                {/* Centered layout elements */}
-                <div className="relative z-10 my-auto py-8 text-center flex flex-col items-center">
-                  <span className="font-mono text-xs text-gold-400 uppercase tracking-widest mb-1.5">
-                    {featuredHeroItems[heroIndex].subtitle}
-                  </span>
-                  <h3 className="font-editorial text-2xl md:text-3.5xl font-extrabold text-white leading-tight drop-shadow-xl font-medium tracking-tight">
-                    {featuredHeroItems[heroIndex].title}
-                  </h3>
-                  <div className="w-10 h-[1.5px] bg-gold-400 mt-4 rounded" />
-                </div>
+                    {/* Centered layout elements */}
+                    <div className="relative z-10 my-auto py-8 text-center flex flex-col items-center">
+                      <span className="font-mono text-xs text-gold-400 uppercase tracking-widest mb-1.5">
+                        {featuredHeroItems[heroIndex]?.subtitle}
+                      </span>
+                      <h3 className="font-editorial text-2xl md:text-3.5xl font-extrabold text-white leading-tight drop-shadow-xl tracking-tight">
+                        {featuredHeroItems[heroIndex]?.title}
+                      </h3>
+                      <div className="w-10 h-[1.5px] bg-gold-400 mt-4 rounded" />
+                    </div>
 
-                {/* Footer details */}
-                <div className="relative z-10 mt-auto border-t border-white/10 pt-3 flex items-end justify-between font-mono text-[9.5px]">
-                  <div className="text-left">
-                    <span className="text-zinc-500 text-[8px] uppercase block">Theme Presets Included</span>
-                    <span className="text-white font-medium">{featuredHeroItems[heroIndex].theme}</span>
+                    {/* Footer details */}
+                    <div className="relative z-10 mt-auto border-t border-white/10 pt-3 flex items-end justify-between font-mono text-[9.5px]">
+                      <div className="text-left">
+                        <span className="text-zinc-500 text-[8px] uppercase block">Theme Presets Included</span>
+                        <span className="text-white font-medium">{featuredHeroItems[heroIndex]?.theme}</span>
+                      </div>
+                      <button
+                        onClick={() => handleLoadTemplate(featuredHeroItems[heroIndex].id)}
+                        className="bg-white hover:bg-gold-400 text-black rounded px-3 py-1 font-mono text-[9.5px] font-bold tracking-normal transition uppercase flex items-center gap-1.5"
+                      >
+                        <span>Load Template</span> <ArrowRight className="w-3 h-3" />
+                      </button>
+                    </div>
                   </div>
-                  <button
-                    onClick={() => handleLoadTemplate(featuredHeroItems[heroIndex].id)}
-                    className="bg-white hover:bg-gold-400 text-black rounded px-3 py-1 font-mono text-[9.5px] font-bold tracking-normal transition uppercase flex items-center gap-1.5"
-                  >
-                    <span>Load Template</span> <ArrowRight className="w-3 h-3" />
-                  </button>
-                </div>
-              </div>
 
-              {/* Slider indicator dots */}
-              <div className="flex gap-2.5 mt-5">
-                {featuredHeroItems.map((_, idx) => (
-                  <button
-                    key={idx}
-                    onClick={() => setHeroIndex(idx)}
-                    className={`h-1.5 rounded-full transition-all duration-300 ${
-                      heroIndex === idx ? 'w-8 bg-gold-400' : 'w-2 bg-zinc-800 hover:bg-zinc-700'
-                    }`}
-                  />
-                ))}
-              </div>
+                  {/* Slider indicator dots */}
+                  <div className="flex gap-2.5 mt-5">
+                    {featuredHeroItems.map((_, idx) => (
+                      <button
+                        key={idx}
+                        onClick={() => setHeroIndex(idx)}
+                        className={`h-1.5 rounded-full transition-all duration-300 ${
+                          heroIndex === idx ? 'w-8 bg-gold-400' : 'w-2 bg-zinc-800 hover:bg-zinc-700'
+                        }`}
+                      />
+                    ))}
+                  </div>
+                </>
+              ) : (
+                <div className="w-full max-w-sm aspect-[4/5] bg-zinc-900/30 border border-zinc-800 border-dashed rounded-2xl p-6 flex flex-col items-center justify-center text-center shadow-xl">
+                  <div className="w-16 h-16 rounded-full bg-zinc-900/50 flex items-center justify-center mb-4 border border-zinc-800">
+                    <span className="text-zinc-500 font-bold text-2xl">+</span>
+                  </div>
+                  <h3 className="text-zinc-300 font-bold text-sm tracking-widest mb-2">NO ACTIVE SPECS</h3>
+                  <p className="text-zinc-500 text-xs font-mono max-w-[200px] leading-relaxed">
+                    Deploy your first poster specification in the CRM panel to feature it here.
+                  </p>
+                </div>
+              )}
             </div>
           </div>
 
@@ -2936,88 +2970,88 @@ export default function App() {
               )}
             </div>
 
-            {/* Portfolio Bento Box Grid wrapped in layout animated containers */}
-            <motion.div layout className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              <AnimatePresence mode="popLayout">
-                {isSearchingActive ? (
-                  // Shimmering real-time searching skeleton loading indicators
-                  Array.from({ length: 3 }).map((_, i) => (
-                    <motion.div 
-                      key={`skeleton-${i}`}
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      exit={{ opacity: 0 }}
-                      className="bg-zinc-950/70 border border-zinc-900 rounded-2xl p-6 aspect-[4/5] flex flex-col justify-between animate-pulse select-none"
-                    >
-                      <div className="flex justify-between items-center">
-                        <div className="space-y-1 w-1/3">
-                          <div className="h-2 bg-zinc-900 rounded w-full" />
-                          <div className="h-3 bg-zinc-900 rounded w-2/3" />
-                        </div>
-                        <div className="h-4 bg-zinc-900 rounded w-8" />
-                      </div>
-                      <div className="space-y-3.5 my-auto text-center">
-                        <div className="h-3 bg-zinc-900 rounded w-1/3 mx-auto" />
-                        <div className="h-5 bg-zinc-900 rounded w-4/5 mx-auto" />
-                        <div className="h-2 bg-zinc-900 rounded w-1/4 mx-auto" />
-                      </div>
-                      <div className="border-t border-zinc-950 pt-4 flex justify-between items-center">
-                        <div className="h-2 bg-zinc-900 rounded w-1/2" />
-                        <div className="h-6 bg-zinc-900 rounded-lg w-12" />
-                      </div>
-                    </motion.div>
-                  ))
-                ) : filteredPortfolio.length > 0 ? (
-                  filteredPortfolio.map((item, idx) => (
-                    <motion.div
-                      key={item.id}
-                      layout
-                      initial={{ opacity: 0, scale: 0.92, y: 15 }}
-                      animate={{ opacity: 1, scale: 1, y: 0 }}
-                      exit={{ opacity: 0, scale: 0.92, y: -15 }}
-                      transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
-                    >
-                      <ScrollRevealCard index={idx}>
-                        <PortfolioCard
-                          item={item}
-                          idx={idx}
-                          userTier={userTier}
-                          adminPreviewPoster={adminPreviewPoster}
-                          onView={() => setViewingProject(item)}
-                          onQuickView={() => {
-                            setQuickViewProject(item);
-                            triggerToast(`Quick View: ${item.title}`, "info");
-                          }}
-                          onShare={(e) => handleShareProject(e, item)}
-                          onExportPDF={() => {
-                            handleExportPortfolioProjectPDF(item);
-                            triggerToast(`Certified "${item.title}" engineering specs saved as global A4 blueprint PDF.`, "success");
-                          }}
-                          onLoadTemplate={handleLoadTemplate}
-                          onSelectKeyword={setSelectedKeyword}
-                          searchQuery={searchQuery}
-                          collections={collections}
-                          onSaveToCollection={handleSaveToCollection}
-                          playHapticClick={playHapticClick}
-                        />
-                      </ScrollRevealCard>
-                    </motion.div>
-                  ))
-                ) : (
-                  <motion.div 
-                    key="empty"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    className="col-span-full py-16 text-center border border-dashed border-zinc-900 rounded-2xl bg-zinc-950/20"
-                  >
-                    <Layers className="w-8 h-8 text-zinc-600 mx-auto mb-2" />
-                    <h4 className="font-display text-white text-sm font-semibold">No Gallery Match Found</h4>
-                    <p className="text-zinc-500 text-xs mt-1">Try another keyword tag or clear the filter console.</p>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </motion.div>
+{/* Portfolio Bento Box Grid wrapped in layout animated containers */}
+             <motion.div layout className="grid gap-6 [&_> *]:min-w-[260px] [&_> *]:flex-1">
+               <AnimatePresence mode="popLayout">
+                 {isSearchingActive ? (
+                   // Shimmering real-time searching skeleton loading indicators
+                   Array.from({ length: 3 }).map((_, i) => (
+                     <motion.div 
+                       key={`skeleton-${i}`}
+                       initial={{ opacity: 0 }}
+                       animate={{ opacity: 1 }}
+                       exit={{ opacity: 0 }}
+                       className="bg-zinc-950/70 border border-zinc-900 rounded-2xl p-6 aspect-[4/5] flex flex-col justify-between animate-pulse select-none"
+                     >
+                       <div className="flex justify-between items-center">
+                         <div className="space-y-1 w-1/3">
+                           <div className="h-2 bg-zinc-900 rounded w-full" />
+                           <div className="h-3 bg-zinc-900 rounded w-2/3" />
+                         </div>
+                         <div className="h-4 bg-zinc-900 rounded w-8" />
+                       </div>
+                       <div className="space-y-3.5 my-auto text-center">
+                         <div className="h-3 bg-zinc-900 rounded w-1/3 mx-auto" />
+                         <div className="h-5 bg-zinc-900 rounded w-4/5 mx-auto" />
+                         <div className="h-2 bg-zinc-900 rounded w-1/4 mx-auto" />
+                       </div>
+                       <div className="border-t border-zinc-950 pt-4 flex justify-between items-center">
+                         <div className="h-2 bg-zinc-900 rounded w-1/2" />
+                         <div className="h-6 bg-zinc-900 rounded-lg w-12" />
+                       </div>
+                     </motion.div>
+                   ))
+                 ) : filteredPortfolio.length > 0 ? (
+                   filteredPortfolio.map((item, idx) => (
+                     <motion.div
+                       key={item.id}
+                       layout
+                       initial={{ opacity: 0, scale: 0.92, y: 15 }}
+                       animate={{ opacity: 1, scale: 1, y: 0 }}
+                       exit={{ opacity: 0, scale: 0.92, y: -15 }}
+                       transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
+                     >
+                       <ScrollRevealCard index={idx}>
+                         <PortfolioCard
+                           item={item}
+                           idx={idx}
+                           userTier={userTier}
+                           adminPreviewPoster={adminPreviewPoster}
+                           onView={() => setViewingProject(item)}
+                           onQuickView={() => {
+                             setQuickViewProject(item);
+                             triggerToast(`Quick View: ${item.title}`, "info");
+                           }}
+                           onShare={(e) => handleShareProject(e, item)}
+                           onExportPDF={() => {
+                             handleExportPortfolioProjectPDF(item);
+                             triggerToast(`Certified "${item.title}" engineering specs saved as global A4 blueprint PDF.`, "success");
+                           }}
+                           onLoadTemplate={handleLoadTemplate}
+                           onSelectKeyword={setSelectedKeyword}
+                           searchQuery={searchQuery}
+                           collections={collections}
+                           onSaveToCollection={handleSaveToCollection}
+                           playHapticClick={playHapticClick}
+                         />
+                       </ScrollRevealCard>
+                     </motion.div>
+                   ))
+                 ) : (
+                   <motion.div 
+                     key="empty"
+                     initial={{ opacity: 0 }}
+                     animate={{ opacity: 1 }}
+                     exit={{ opacity: 0 }}
+                     className="col-span-full py-16 text-center border border-dashed border-zinc-900 rounded-2xl bg-zinc-950/20"
+                   >
+                     <Layers className="w-8 h-8 text-zinc-600 mx-auto mb-2" />
+                     <h4 className="font-display text-white text-sm font-semibold">No Gallery Match Found</h4>
+                     <p className="text-zinc-500 text-xs mt-1">Try another keyword tag or clear the filter console.</p>
+                   </motion.div>
+                 )}
+               </AnimatePresence>
+             </motion.div>
           </div>
         </section>
 
@@ -3040,13 +3074,13 @@ export default function App() {
               </p>
             </div>
 
-            {/* Grid structure (4 Columns matching layout 01, 02, 03, 04) */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              {SERVICE_ITEMS.map((service) => (
-                <div 
-                  key={service.id}
-                  className="bg-zinc-950 border border-zinc-900/95 rounded-2xl p-6 flex flex-col justify-between hover:border-zinc-800 transition-all duration-300 relative group"
-                >
+{/* Grid structure (responsive cards) */}
+             <div className="grid gap-6 [&_> *]:min-w-[260px] [&_> *]:flex-1">
+               {SERVICE_ITEMS.map((service) => (
+                 <div 
+                   key={service.id}
+                   className="bg-zinc-950 border border-zinc-900/95 rounded-2xl p-6 flex flex-col justify-between hover:border-zinc-800 transition-all duration-300 relative group"
+                 >
                   <div>
                     {/* Index Indicator */}
                     <div className="font-mono text-xs text-gold-400 font-bold mb-4 bg-zinc-900 border border-zinc-800/80 w-8 h-8 rounded-lg flex items-center justify-center">
@@ -3469,7 +3503,19 @@ export default function App() {
         </section>
           </>
         )}
-      </main>
+      {/* Right Ad Slot */}
+  <div className="hidden md:block w-[180px] flex-shrink-0">
+    <div className="mt-8">
+      {/* Google AdSense right */}
+      <ins className="adsbygoogle"
+           style={{display:"block"}}
+           data-ad-client="ca-pub-7665211760721884"
+           data-ad-slot="XXXXXXXXXX"
+           data-ad-format="auto"
+           data-full-width-responsive="true"></ins>
+    </div>
+  </div>
+</main>
 
       {/* Exquisite Footer */}
       <footer className="bg-zinc-950 border-t border-zinc-900 py-12 px-4 md:px-8 text-center text-xs relative z-10">
@@ -5049,6 +5095,7 @@ export default function App() {
         onClose={() => setIsAuthPortalOpen(false)}
         onAuthSuccess={(u) => {
           console.log("Welcome client user login:", u);
+          setIsAuthPortalOpen(false);
         }}
       />
 

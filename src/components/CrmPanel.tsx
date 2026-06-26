@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { 
   PlusCircle, Database, Edit, Trash2, CheckCircle2, AlertCircle, X,
   Save, Sparkles, Sliders, Type, Palette, AlignLeft, Info, Eye, EyeOff,
@@ -11,8 +11,34 @@ import { PosterTemplate } from '../types';
 import { auth } from '../auth';
 import { 
   LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, 
-  Tooltip, ResponsiveContainer, Legend, PieChart, Pie, Cell 
+  Tooltip, Legend, PieChart, Pie, Cell 
 } from 'recharts';
+
+// Custom ResizeObserver hook to accurately measure container dimensions and prevent Recharts console warnings
+function useChartSize() {
+  const [size, setSize] = useState({ width: 0, height: 0 });
+  const observerRef = useRef<ResizeObserver | null>(null);
+
+  const ref = useCallback((node: HTMLDivElement | null) => {
+    if (observerRef.current) {
+      observerRef.current.disconnect();
+      observerRef.current = null;
+    }
+
+    if (node) {
+      const observer = new ResizeObserver((entries) => {
+        if (!entries || entries.length === 0) return;
+        const width = Math.floor(entries[0].contentRect.width);
+        const height = Math.floor(entries[0].contentRect.height);
+        setSize({ width, height });
+      });
+      observer.observe(node);
+      observerRef.current = observer;
+    }
+  }, []);
+
+  return [ref, size] as const;
+}
 
 // Global Themes mapping for CSS emulation in Adaptive Live Drawer Sandbox
 const THEME_STYLES: Record<string, {
@@ -112,13 +138,27 @@ interface AuditLog {
   adminEmail: string;
 }
 
-export default function CrmPanel({ 
-  posters, setPosters, triggerToast, 
+export default function CrmPanel({
+  posters, setPosters, triggerToast,
   adminPreviewPoster, setAdminPreviewPoster,
   themeStyles, setThemeStyles
 }: CrmPanelProps) {
+  // Check if current user is Super-admin
+  const isSuperAdmin = auth.currentUser?.is_admin || false;
+
+  // Chart size measuring hooks to prevent Recharts layout warnings
+  const [lineChartRef, lineChartSize] = useChartSize();
+  const [pieChartRef, pieChartSize] = useChartSize();
+  const [barChartRef, barChartSize] = useChartSize();
+
   // Navigation State
-  const [activeTab, setActiveTab] = useState<'analytics' | 'inventory' | 'logs' | 'theme-config' | 'client-hub'>('analytics');
+  const [activeTab, setActiveTab] = useState<'analytics' | 'inventory' | 'logs' | 'theme-config' | 'client-hub' | 'admin'>(() => {
+    return (localStorage.getItem('creativenode_crm_tab') as any) || 'analytics';
+  });
+  
+  useEffect(() => {
+    localStorage.setItem('creativenode_crm_tab', activeTab);
+  }, [activeTab]);
   
   // Neon DB CRM State
   const [neonData, setNeonData] = useState<{ 
@@ -128,20 +168,135 @@ export default function CrmPanel({
   }>({ clients: [], posterDesigns: [], websites: [] });
   const [isFetchingNeon, setIsFetchingNeon] = useState(false);
 
+  const refreshNeonData = async () => {
+    setIsFetchingNeon(true);
+    try {
+      const res = await fetch('/api/db/crm-data').then(async r => { const t = await r.text(); try { return t ? JSON.parse(t) : {}; } catch { return {}; } });
+      if (res.status === 'success') {
+        setNeonData(res.data);
+      }
+    } catch (err) {
+      console.error("Failed to fetch neon data:", err);
+    } finally {
+      setIsFetchingNeon(false);
+    }
+  };
+
   useEffect(() => {
     if (activeTab === 'client-hub') {
-      setIsFetchingNeon(true);
-      fetch('/api/db/crm-data')
-        .then(res => res.json())
-        .then(res => {
-          if (res.status === 'success') {
-            setNeonData(res.data);
-          }
-        })
-        .catch(err => console.error("Failed to fetch neon data:", err))
-        .finally(() => setIsFetchingNeon(false));
+      refreshNeonData();
     }
   }, [activeTab]);
+
+  // CRM Forms State
+  const [isClientModalOpen, setIsClientModalOpen] = useState(false);
+  const [clientForm, setClientForm] = useState({ id: '', name: '', slug: '', tagline: '', accent: '#d4af37', sort_order: 0 });
+
+  const [isPosterModalOpen, setIsPosterModalOpen] = useState(false);
+  const [clientPosterForm, setClientPosterForm] = useState({ id: '', client_id: '', title: '', image_path: '', sort_order: 0 });
+
+  const [isWebsiteModalOpen, setIsWebsiteModalOpen] = useState(false);
+  const [websiteForm, setWebsiteForm] = useState({ id: '', client_id: '', title: '', image_path: '', approved: true, sort_order: 0 });
+
+  // CRM Submit Handlers
+  const handleClientFormSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const id = clientForm.id || `client-${Date.now()}`;
+    try {
+      const res = await fetch('/api/db/clients', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...clientForm, id }) });
+      if (res.ok) {
+        triggerToast("Client saved successfully.", "success");
+        setIsClientModalOpen(false);
+        setClientForm({ id: '', name: '', slug: '', tagline: '', accent: '#d4af37', sort_order: 0 });
+        refreshNeonData();
+      } else {
+        triggerToast("Failed to save client.", "alert");
+      }
+    } catch (err) {
+      triggerToast("Failed to save client.", "alert");
+    }
+  };
+
+  const handleClientDelete = async (id: string) => {
+    if (!window.confirm('Are you sure you want to delete this client? All associated posters and websites will also be deleted.')) return;
+    try {
+      const res = await fetch(`/api/db/clients/${id}`, { method: 'DELETE' });
+      if (res.ok) {
+        triggerToast("Client deleted successfully.", "success");
+        refreshNeonData();
+      } else {
+        triggerToast("Failed to delete client.", "alert");
+      }
+    } catch (err) {
+      triggerToast("Failed to delete client.", "alert");
+    }
+  };
+
+  const handleClientPosterSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const id = clientPosterForm.id || `poster-${Date.now()}`;
+    try {
+      const res = await fetch('/api/db/client-posters', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...clientPosterForm, id }) });
+      if (res.ok) {
+        triggerToast("Poster saved successfully.", "success");
+        setIsPosterModalOpen(false);
+        setClientPosterForm({ id: '', client_id: '', title: '', image_path: '', sort_order: 0 });
+        refreshNeonData();
+      } else {
+        triggerToast("Failed to save poster.", "alert");
+      }
+    } catch (err) {
+      triggerToast("Failed to save poster.", "alert");
+    }
+  };
+
+  const handleClientPosterDelete = async (id: string) => {
+    if (!window.confirm('Are you sure you want to delete this poster?')) return;
+    try {
+      const res = await fetch(`/api/db/client-posters/${id}`, { method: 'DELETE' });
+      if (res.ok) {
+        triggerToast("Poster deleted successfully.", "success");
+        refreshNeonData();
+      } else {
+        triggerToast("Failed to delete poster.", "alert");
+      }
+    } catch (err) {
+      triggerToast("Failed to delete poster.", "alert");
+    }
+  };
+
+  const handleWebsiteSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const id = websiteForm.id || `website-${Date.now()}`;
+    try {
+      const res = await fetch('/api/db/client-websites', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...websiteForm, id }) });
+      if (res.ok) {
+        triggerToast("Website saved successfully.", "success");
+        setIsWebsiteModalOpen(false);
+        setWebsiteForm({ id: '', client_id: '', title: '', image_path: '', approved: true, sort_order: 0 });
+        refreshNeonData();
+      } else {
+        triggerToast("Failed to save website.", "alert");
+      }
+    } catch (err) {
+      triggerToast("Failed to save website.", "alert");
+    }
+  };
+
+  const handleWebsiteDelete = async (id: string) => {
+    if (!window.confirm('Are you sure you want to delete this website?')) return;
+    try {
+      const res = await fetch(`/api/db/client-websites/${id}`, { method: 'DELETE' });
+      if (res.ok) {
+        triggerToast("Website deleted successfully.", "success");
+        refreshNeonData();
+      } else {
+        triggerToast("Failed to delete website.", "alert");
+      }
+    } catch (err) {
+      triggerToast("Failed to delete website.", "alert");
+    }
+  };
   
   // Search & Filter State
   const [searchTerm, setSearchTerm] = useState('');
@@ -197,6 +352,10 @@ export default function CrmPanel({
   const [expiryDate, setExpiryDate] = useState('');
   const [dateCreated, setDateCreated] = useState('');
 
+  // AI Generation State
+  const [brandName, setBrandName] = useState('');
+  const [isGenerating, setIsGenerating] = useState(false);
+
   // New features declarations block
   const [drawerPoster, setDrawerPoster] = useState<PosterTemplate | null>(null);
   const [drawerTheme, setDrawerTheme] = useState<string>('obsidian-gold');
@@ -249,7 +408,7 @@ export default function CrmPanel({
       const savedDraft = localStorage.getItem('atelier-crm-modal-draft');
       if (savedDraft) {
         try {
-          const draft = JSON.parse(savedDraft);
+          const draft = savedDraft ? JSON.parse(savedDraft) : {};
           if (draft.title || draft.subtitle || draft.details) {
             setTitle(draft.title || '');
             setSubtitle(draft.subtitle || '');
@@ -428,7 +587,7 @@ export default function CrmPanel({
   useEffect(() => {
     const fetchLogs = () => {
       fetch('/api/db/audit-logs')
-        .then(r => r.json())
+        .then(async r => { const t = await r.text(); try { return t ? JSON.parse(t) : {}; } catch { return {}; } })
         .then(res => {
           if (res.status === 'success') {
             setAuditLogs(res.data);
@@ -525,6 +684,38 @@ export default function CrmPanel({
     }
   };
 
+  // AI Generation Handler
+  const handleGenerateAIContent = async () => {
+    if (!brandName.trim()) {
+      triggerToast("Please enter a Brand Name first.", "alert");
+      return;
+    }
+    setIsGenerating(true);
+    triggerToast("Generating elite poster copy with AI...", "info");
+    
+    try {
+      const res = await fetch('/api/generate-poster-content', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ brandName: brandName.trim() })
+      });
+      
+      if (!res.ok) throw new Error("Failed to generate content");
+      
+      const data = await res.json();
+      if (data.title) setTitle(data.title);
+      if (data.subtitle) setSubtitle(data.subtitle);
+      if (data.details) setDetails(data.details);
+      
+      triggerToast("AI content generated successfully!", "success");
+    } catch (err) {
+      console.error(err);
+      triggerToast("Failed to generate AI content.", "alert");
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
   // Submit Handler for Add / Update
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -535,7 +726,7 @@ export default function CrmPanel({
     }
 
     const id = editingId || 'custom-project-' + Date.now();
-    const keywords = keywordsString.split(',').map(k => k.trim()).filter(k => k.length > 0);
+    const keywords = (keywordsString || '').split(',').map(k => k.trim()).filter(k => k.length > 0);
 
     const templateData: PosterTemplate = {
       id,
@@ -561,7 +752,15 @@ export default function CrmPanel({
     };
 
     try {
-      await fetch('/api/db/custom-posters', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(templateData) });
+      const res = await fetch('/api/db/custom-posters', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(templateData) });
+      if (!res.ok) {
+        throw new Error(`Server returned ${res.status}`);
+      }
+      const t = await res.text();
+      let resData: any = {};
+      try { resData = t ? JSON.parse(t) : {}; } catch (e) {}
+      if (resData.status === 'error') throw new Error(resData.message);
+      
       const logMessage = editingId 
         ? `Modified poster specs for ID: "${id}" (Title: "${title.trim()}", Status: "${status}")`
         : `Deployed new poster spec ID: "${id}" (Title: "${title.trim()}", Status: "${status}")`;
@@ -620,19 +819,36 @@ export default function CrmPanel({
   };
 
   const handleDeleteClick = async (item: PosterTemplate) => {
-    if (!window.confirm(`Are you sure you want to permanently delete poster specification "${item.title}"?`)) {
-      return;
-    }
+    if (!window.confirm(`Delete "${item.title}" permanently?`)) return;
     try {
-      await fetch(`/api/db/custom-posters/${item.id}`, { method: 'DELETE' });
-      await logAction("DELETE_POSTER", `Purged poster specification: "${item.title}" (ID: ${item.id})`);
-      triggerToast(`Specification blueprint for "${item.title}" purged from system.`, "success");
+      const res = await fetch(`/api/db/custom-posters/${item.id}`, { method: 'DELETE' });
+      if (!res.ok) throw new Error(`Server returned ${res.status}`);
+      // Remove from local state on success
+      setPosters(prev => prev.filter(p => p.id !== item.id));
+      await logAction("DELETE_POSTER", `Purged: "${item.title}" (ID: ${item.id})`);
+      triggerToast(`"${item.title}" deleted.`, "success");
     } catch (err) {
       console.error("Delete failed:", err);
+      // Fallback: remove locally anyway
       setPosters(prev => prev.filter(p => p.id !== item.id));
-      await logAction("DELETE_POSTER_LOCAL", `Purged poster specification locally: "${item.title}"`);
-      triggerToast("Purged from local cache registry.", "success");
+      await logAction("DELETE_POSTER_LOCAL", `Locally purged: "${item.title}"`);
+      triggerToast(`Removed from local cache.`, "success");
     }
+  };
+
+  const handleDeleteAll = async () => {
+    if (!window.confirm(`This will permanently delete ALL ${posters.length} poster(s) from the database. Are you sure?`)) return;
+    let deleted = 0;
+    for (const p of posters) {
+      try {
+        await fetch(`/api/db/custom-posters/${p.id}`, { method: 'DELETE' });
+        deleted++;
+      } catch (_) { /* ignore individual errors */ }
+    }
+    setPosters([]);
+    setSelectedIds([]);
+    await logAction("DELETE_ALL_POSTERS", `Purged all ${deleted} poster specifications from system.`);
+    triggerToast(`All ${deleted} posters purged. Canvas is clean.`, "success");
   };
 
   // Bulk Actions
@@ -896,6 +1112,7 @@ export default function CrmPanel({
 
   const handleResetForm = () => {
     setEditingId(null);
+    setBrandName('');
     setTitle('');
     setSubtitle('');
     setDetails('');
@@ -963,246 +1180,189 @@ export default function CrmPanel({
   });
 
   return (
-    <div className="bg-zinc-950 border-t border-zinc-900 py-16 px-4 md:px-8 max-w-7xl mx-auto space-y-10 text-left select-none animate-fade-in">
+    <div className="min-h-screen bg-[#0a0a0c] border-t border-zinc-900/60 py-12 px-4 md:px-8 max-w-7xl mx-auto space-y-8 text-left select-none">
       
-      {/* CRM Global Header */}
-      <div className="flex flex-col md:flex-row md:items-end md:justify-between border-b border-zinc-900 pb-8 gap-6 animate-slide-up">
-        <div>
-          <div className="flex items-center gap-2 mb-3">
-            <span className="font-mono text-[9px] text-zinc-950 bg-gold-400 border border-gold-500/50 px-2.5 py-1 rounded-full inline-block font-extrabold shadow-[0_0_12px_rgba(212,175,55,0.2)]">
-              ★ SYSTEM ROOT SECURITY ACTIVE
-            </span>
-            <span className="font-mono text-[9px] text-zinc-400 bg-zinc-900/60 border border-zinc-800 px-2.5 py-1 rounded-full inline-block">
-              puspharaj.m2003@gmail.com
-            </span>
-          </div>
-          <h2 className="font-display text-4xl md:text-5xl font-medium text-white tracking-tight leading-none">
-            Mudalvar <span className="font-editorial italic font-normal text-gold-400">Control Suite</span>
-          </h2>
-          <p className="text-zinc-500 text-xs md:text-sm max-w-xl mt-2 font-sans leading-relaxed">
-            Execute real-time Firestore synchronization, audit chronological event logs, visualize Swiss design engagement parameters, and customize luxury layout specifications.
-          </p>
-        </div>
+      {/* ── Premium CRM Header ── */}
+      <div className="relative overflow-hidden rounded-3xl border border-zinc-800/60 bg-gradient-to-br from-zinc-950 via-zinc-900/80 to-zinc-950 p-8 shadow-2xl">
+        {/* Ambient glow */}
+        <div className="absolute -top-24 -right-24 w-64 h-64 rounded-full bg-amber-500/5 blur-3xl pointer-events-none" />
+        <div className="absolute -bottom-16 -left-16 w-48 h-48 rounded-full bg-amber-500/4 blur-3xl pointer-events-none" />
 
-        {/* Tab Headers Navigation with Advanced Utilities */}
-        <div className="flex flex-wrap items-center gap-3 shrink-0 self-start">
-          
-          {/* Tab switches */}
-          <div className="flex bg-zinc-900/50 border border-zinc-900 p-1.5 rounded-xl font-mono text-[10px] uppercase gap-1 select-none">
-            <button
-              onClick={() => setActiveTab('analytics')}
-              className={`py-2 px-3.5 rounded-lg transition-all flex items-center gap-1.5 cursor-pointer ${
-                activeTab === 'analytics' ? 'bg-gold-500 text-black font-extrabold shadow-lg shadow-gold-500/10' : 'text-zinc-500 hover:text-zinc-300'
-              }`}
-            >
-              <BarChart3 className="w-3.5 h-3.5" />
-              <span>HQ Analytics</span>
-            </button>
-            <button
-              onClick={() => setActiveTab('inventory')}
-              className={`py-2 px-3.5 rounded-lg transition-all flex items-center gap-1.5 cursor-pointer ${
-                activeTab === 'inventory' ? 'bg-gold-500 text-black font-extrabold shadow-lg shadow-gold-500/10' : 'text-zinc-500 hover:text-zinc-300'
-              }`}
-            >
-              <Database className="w-3.5 h-3.5" />
-              <span>Manage Inventory ({posters.length})</span>
-            </button>
-            <button
-              onClick={() => setActiveTab('logs')}
-              className={`py-2 px-3.5 rounded-lg transition-all flex items-center gap-1.5 cursor-pointer ${
-                activeTab === 'logs' ? 'bg-gold-500 text-black font-extrabold shadow-lg shadow-gold-500/10' : 'text-zinc-500 hover:text-zinc-300'
-              }`}
-            >
-              <History className="w-3.5 h-3.5" />
-              <span>System Audit ({auditLogs.length})</span>
-            </button>
-            <button
-              onClick={() => setActiveTab('client-hub')}
-              className={`py-2 px-3.5 rounded-lg transition-all flex items-center gap-1.5 cursor-pointer ${
-                activeTab === 'client-hub' ? 'bg-indigo-500 text-white font-extrabold shadow-lg shadow-indigo-500/20' : 'text-zinc-500 hover:text-zinc-300'
-              }`}
-            >
-              <LayoutGrid className="w-3.5 h-3.5" />
-              <span>Neon Client Hub</span>
-            </button>
+        <div className="relative flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
+          <div>
+            <div className="flex items-center gap-2 mb-3 flex-wrap">
+              <span className="inline-flex items-center gap-1.5 font-mono text-[9px] text-black bg-gradient-to-r from-amber-400 to-yellow-300 px-3 py-1 rounded-full font-extrabold shadow-md shadow-amber-500/20">
+                <span className="w-1.5 h-1.5 rounded-full bg-black animate-pulse" />
+                SYSTEM ROOT ACTIVE
+              </span>
+              <span className="font-mono text-[9px] text-zinc-400 bg-zinc-900/70 border border-zinc-700/60 px-2.5 py-1 rounded-full">
+                {auth.currentUser?.email || 'puspharaj.m2003@gmail.com'}
+              </span>
+              <span className="font-mono text-[9px] text-emerald-400 bg-emerald-950/40 border border-emerald-800/40 px-2.5 py-1 rounded-full flex items-center gap-1">
+                <span className="w-1 h-1 rounded-full bg-emerald-400 animate-pulse" />
+                DB Connected
+              </span>
+            </div>
+            <h2 className="text-4xl md:text-5xl font-bold text-white tracking-tight leading-none mb-2">
+              Mudalvar <span className="bg-gradient-to-r from-amber-400 to-yellow-300 bg-clip-text text-transparent italic font-light">Control Suite</span>
+            </h2>
+            <p className="text-zinc-500 text-sm max-w-xl leading-relaxed">
+              Real-time Neon DB sync · Audit logs · Analytics · Poster specification management
+            </p>
           </div>
 
-          {/* Sync & Notification Actions Desk */}
-          <div className="flex items-center gap-2">
-            
-            {/* Manual Sync Button */}
+          {/* Right actions */}
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 shrink-0">
+            {/* Deploy button */}
             <button
-              onClick={async () => {
-                setIsSyncing(true);
-                try {
-                  await new Promise(resolve => setTimeout(resolve, 800));
-                  const r = await fetch('/api/db/custom-posters');
-                  const res = await r.json();
-                  const count = res.data?.length || 0;
-                  triggerToast(`Manual Sync Complete: Verified ${count} layout blueprints synchronized with Neon DB.`, "success");
-                  await logAction("MANUAL_SYNC", `Manually validated and refreshed ${count} poster records from Neon`);
-                } catch (e: any) {
-                  triggerToast(`Sync failure: ${e.message}`, 'alert');
-                } finally {
-                  setIsSyncing(false);
-                }
-              }}
-              className="p-2.5 rounded-xl bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-white hover:border-zinc-700 transition cursor-pointer flex items-center justify-center relative group"
-              title="Force synchronization with Firestore cloud database"
+              onClick={() => { handleResetForm(); setIsModalOpen(true); }}
+              className="inline-flex items-center gap-2 py-3 px-5 rounded-2xl bg-gradient-to-r from-amber-500 to-yellow-400 hover:from-amber-400 hover:to-yellow-300 text-black font-extrabold text-sm shadow-lg shadow-amber-500/20 transition-all active:scale-[0.98] cursor-pointer"
             >
-              <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin text-gold-400' : ''}`} />
-              <span className="hidden md:block text-[9px] font-mono font-bold pr-1 pl-1 text-zinc-400 uppercase">Sync</span>
+              <PlusCircle className="w-4 h-4" />
+              <span>Deploy New Poster</span>
             </button>
 
-            {/* Notification Bell Dropdown */}
-            <div className="relative">
+            <div className="flex items-center gap-2">
+              {/* Sync button */}
               <button
-                onClick={() => setShowNotificationCenter(!showNotificationCenter)}
-                className={`p-2.5 rounded-xl bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-white hover:border-zinc-700 transition cursor-pointer flex items-center justify-center relative ${
-                  posters.filter(p => p.status === 'Pending Approval' || p.status === 'Draft').length > 0 ? 'border-amber-500/30' : ''
-                }`}
-                title="System Desk Alerts"
+                onClick={async () => {
+                  setIsSyncing(true);
+                  try {
+                    await new Promise(resolve => setTimeout(resolve, 800));
+                    const r = await fetch('/api/db/custom-posters');
+                    const t = await r.text();
+                    let res: any = {};
+                    try { res = t ? JSON.parse(t) : {}; } catch (e) {}
+                    const count = res.data?.length || 0;
+                    triggerToast(`Sync Complete: ${count} blueprints verified.`, "success");
+                    await logAction("MANUAL_SYNC", `Verified ${count} poster records from Neon`);
+                  } catch (e: any) {
+                    triggerToast(`Sync failure: ${e.message}`, 'alert');
+                  } finally {
+                    setIsSyncing(false);
+                  }
+                }}
+                className="p-3 rounded-xl bg-zinc-900/80 border border-zinc-700/60 text-zinc-400 hover:text-white hover:border-zinc-600 transition cursor-pointer relative group"
+                title="Force sync with Neon DB"
               >
-                <Bell className={`w-3.5 h-3.5 ${posters.filter(p => p.status === 'Pending Approval' || p.status === 'Draft').length > 0 ? 'animate-bounce text-amber-400' : ''}`} />
-                {posters.filter(p => p.status === 'Pending Approval' || p.status === 'Draft').length > 0 && (
-                  <span className="absolute -top-1 -right-1 flex h-4.5 w-4.5 items-center justify-center rounded-full bg-red-650 text-[7px] font-extrabold text-white">
-                    {posters.filter(p => p.status === 'Pending Approval' || p.status === 'Draft').length}
-                  </span>
-                )}
+                <RefreshCw className={`w-4 h-4 ${isSyncing ? 'animate-spin text-amber-400' : ''}`} />
               </button>
 
-              <AnimatePresence>
-                {showNotificationCenter && (
-                  <>
-                    <div className="fixed inset-0 z-30" onClick={() => setShowNotificationCenter(false)} />
-                    <motion.div
-                      initial={{ opacity: 0, scale: 0.95, y: 10 }}
-                      animate={{ opacity: 1, scale: 1, y: 0 }}
-                      exit={{ opacity: 0, scale: 0.95, y: 10 }}
-                      className="absolute right-0 mt-2 w-80 bg-zinc-950 border border-zinc-850 rounded-2xl shadow-2xl p-4.5 z-40 space-y-4 font-mono text-[9.5px]"
-                    >
-                      <div className="flex items-center justify-between border-b border-zinc-900 pb-2.5">
-                        <span className="font-extrabold text-zinc-300 uppercase tracking-wider">SECURED NOTIF ALERT CENTRE</span>
-                        <span className="text-[7.5px] text-zinc-550 uppercase">Desk active</span>
-                      </div>
+              {/* Notification bell */}
+              <div className="relative">
+                <button
+                  onClick={() => setShowNotificationCenter(!showNotificationCenter)}
+                  className={`p-3 rounded-xl bg-zinc-900/80 border transition cursor-pointer relative ${
+                    posters.filter(p => p.status === 'Pending Approval').length > 0 ? 'border-amber-500/40' : 'border-zinc-700/60 hover:border-zinc-600'
+                  }`}
+                  title="Notifications"
+                >
+                  <Bell className={`w-4 h-4 ${posters.filter(p => p.status === 'Pending Approval').length > 0 ? 'text-amber-400 animate-bounce' : 'text-zinc-400 hover:text-white'}`} />
+                  {posters.filter(p => p.status === 'Pending Approval').length > 0 && (
+                    <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[7px] font-extrabold text-white">
+                      {posters.filter(p => p.status === 'Pending Approval').length}
+                    </span>
+                  )}
+                </button>
 
-                      {/* Pending Approvals */}
-                      <div className="space-y-1.5">
-                        <span className="text-[7.5px] text-zinc-650 uppercase font-extrabold block">Awaiting Super-Admin Approval ({posters.filter(p => p.status === 'Pending Approval').length})</span>
-                        {posters.filter(p => p.status === 'Pending Approval').length === 0 ? (
-                          <p className="text-zinc-600 italic py-1">No items awaiting approval context.</p>
-                        ) : (
-                          <div className="max-h-24 overflow-y-auto space-y-1">
-                            {posters.filter(p => p.status === 'Pending Approval').map(item => (
-                              <div key={item.id} className="bg-zinc-900/10 p-1.5 border border-zinc-900 rounded-lg flex items-center justify-between gap-2">
-                                <span className="text-zinc-300 font-bold truncate max-w-[150px]">{item.title}</span>
-                                <button
-                                  type="button"
-                                  onClick={async () => {
-                                    await handleQuickStatusToggle(item.id, 'Live');
-                                    setShowNotificationCenter(false);
-                                  }}
-                                  className="text-[7.5px] hover:bg-gold-500 hover:text-black shrink-0 border border-amber-500/30 text-gold-400 bg-gold-950/25 px-1.5 py-0.5 rounded font-extrabold uppercase leading-none transition"
-                                >
-                                  Approve Live
-                                </button>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Recent Activities */}
-                      <div className="space-y-2 border-t border-zinc-900 pt-2.5">
-                        <span className="text-[7.5px] text-zinc-650 uppercase font-extrabold block">Recent Activity Log Traces</span>
-                        {auditLogs.slice(0, 3).length === 0 ? (
-                          <p className="text-zinc-600 italic">No chronological logs logged.</p>
-                        ) : (
-                          <div className="space-y-1.5">
-                            {auditLogs.slice(0, 3).map(log => (
-                              <div key={log.id} className="text-[8px] leading-snug bg-zinc-950/50 p-1.5 border border-zinc-900/30 rounded-lg">
-                                <div className="flex justify-between items-center text-zinc-500 text-[7px] mb-0.5">
-                                  <span>{log.action}</span>
-                                  <span>{new Date(log.timestamp).toLocaleTimeString()}</span>
+                <AnimatePresence>
+                  {showNotificationCenter && (
+                    <>
+                      <div className="fixed inset-0 z-30" onClick={() => setShowNotificationCenter(false)} />
+                      <motion.div
+                        initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                        animate={{ opacity: 1, scale: 1, y: 0 }}
+                        exit={{ opacity: 0, scale: 0.95, y: 10 }}
+                        className="absolute right-0 mt-2 w-80 bg-zinc-950/95 border border-zinc-800 rounded-2xl shadow-2xl p-4 z-40 space-y-4 font-mono text-[9.5px] backdrop-blur-md"
+                      >
+                        <div className="flex items-center justify-between border-b border-zinc-800 pb-2.5">
+                          <span className="font-extrabold text-zinc-200 uppercase tracking-wider text-[10px]">Notification Centre</span>
+                          <span className="text-[7.5px] text-zinc-500 uppercase">Live</span>
+                        </div>
+                        <div className="space-y-1.5">
+                          <span className="text-[7.5px] text-zinc-500 uppercase font-extrabold block">Awaiting Approval ({posters.filter(p => p.status === 'Pending Approval').length})</span>
+                          {posters.filter(p => p.status === 'Pending Approval').length === 0 ? (
+                            <p className="text-zinc-600 italic py-1">No items pending.</p>
+                          ) : (
+                            <div className="max-h-28 overflow-y-auto space-y-1">
+                              {posters.filter(p => p.status === 'Pending Approval').map(item => (
+                                <div key={item.id} className="bg-zinc-900/60 p-1.5 border border-zinc-800 rounded-lg flex items-center justify-between gap-2">
+                                  <span className="text-zinc-300 font-bold truncate max-w-[150px]">{item.title}</span>
+                                  <button
+                                    type="button"
+                                    onClick={async () => { await handleQuickStatusToggle(item.id, 'Live'); setShowNotificationCenter(false); }}
+                                    className="text-[7.5px] hover:bg-amber-500 hover:text-black shrink-0 border border-amber-500/30 text-amber-400 bg-amber-950/25 px-1.5 py-0.5 rounded font-extrabold uppercase leading-none transition"
+                                  >
+                                    Approve
+                                  </button>
                                 </div>
-                                <span className="text-zinc-400 block italic">"{log.details.slice(0, 60)}..."</span>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-
-                      <div className="border-t border-zinc-900 pt-2 flex justify-between">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setStatusFilter('Pending Approval');
-                            setActiveTab('inventory');
-                            setShowNotificationCenter(false);
-                          }}
-                          className="text-gold-400 hover:text-gold-300 font-extrabold text-[8px] uppercase tracking-wider transition"
-                        >
-                          View approvals list
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setActiveTab('logs');
-                            setShowNotificationCenter(false);
-                          }}
-                          className="text-zinc-500 hover:text-zinc-400 text-[8px] uppercase transition"
-                        >
-                          Full traces
-                        </button>
-                      </div>
-                    </motion.div>
-                  </>
-                )}
-              </AnimatePresence>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                        <div className="border-t border-zinc-800 pt-2 flex justify-between">
+                          <button type="button" onClick={() => { setStatusFilter('Pending Approval'); setActiveTab('inventory'); setShowNotificationCenter(false); }} className="text-amber-400 hover:text-amber-300 font-extrabold text-[8px] uppercase tracking-wider transition">View all →</button>
+                          <button type="button" onClick={() => { setActiveTab('logs'); setShowNotificationCenter(false); }} className="text-zinc-500 hover:text-zinc-400 text-[8px] uppercase transition">Audit logs</button>
+                        </div>
+                      </motion.div>
+                    </>
+                  )}
+                </AnimatePresence>
+              </div>
             </div>
-
           </div>
+        </div>
 
+        {/* Tab Navigation */}
+        <div className="relative flex flex-wrap items-center gap-1 mt-8 pt-6 border-t border-zinc-800/60">
+          {[
+            { key: 'analytics', icon: BarChart3, label: 'Analytics' },
+            { key: 'inventory', icon: Database, label: `Inventory (${posters.length})` },
+            { key: 'logs', icon: History, label: `Audit (${auditLogs.length})` },
+            { key: 'client-hub', icon: LayoutGrid, label: 'Client Hub' },
+            ...(isSuperAdmin ? [{ key: 'admin', icon: ShieldCheck, label: 'Super-Admin' }] : []),
+          ].map(({ key, icon: Icon, label }) => (
+            <button
+              key={key}
+              onClick={() => setActiveTab(key as any)}
+              className={`flex items-center gap-2 px-4 py-2 rounded-xl font-mono text-[10px] uppercase font-bold transition-all cursor-pointer ${
+                activeTab === key
+                  ? key === 'admin'
+                    ? 'bg-red-600/20 text-red-400 border border-red-600/30'
+                    : key === 'client-hub'
+                    ? 'bg-indigo-600/20 text-indigo-400 border border-indigo-600/30'
+                    : 'bg-amber-500/15 text-amber-400 border border-amber-500/30'
+                  : 'text-zinc-500 hover:text-zinc-300 border border-transparent hover:border-zinc-700/40'
+              }`}
+            >
+              <Icon className="w-3.5 h-3.5" />
+              <span>{label}</span>
+            </button>
+          ))}
         </div>
       </div>
 
-      {/* ────────────────────────────────── SYSTEM ARCHIVE DATE RANGEFINDER ────────────────────────────────── */}
-      <div className="bg-zinc-905 border border-zinc-900 rounded-2xl p-4 flex flex-col md:flex-row md:items-center justify-between gap-4 font-mono text-xs">
+      {/* Date Range Finder */}
+      <div className="bg-zinc-900/30 border border-zinc-800/60 rounded-2xl p-4 flex flex-col md:flex-row md:items-center justify-between gap-4 font-mono text-xs">
         <div className="flex items-center gap-2.5">
-          <CalendarRange className="w-4 h-4 text-gold-400 shrink-0" />
+          <CalendarRange className="w-4 h-4 text-amber-400 shrink-0" />
           <div>
-            <span className="font-extrabold text-zinc-300 block uppercase tracking-wider text-[10px]">Secure Temporal Rangefinder</span>
-            <span className="text-[8.5px] text-zinc-650">Preserves historical queries and filters CSV export frames by timestamp bounds.</span>
+            <span className="font-bold text-zinc-300 block uppercase tracking-wider text-[10px]">Temporal Rangefinder</span>
+            <span className="text-[8.5px] text-zinc-600">Filter CSV exports by timestamp bounds.</span>
           </div>
         </div>
-
-        <div className="flex flex-wrap items-center gap-2.5 border-t border-zinc-900 md:border-none pt-3 md:pt-0">
-          <div className="flex items-center gap-2 bg-zinc-950 border border-zinc-850 px-3 py-1.5 rounded-xl">
-            <span className="text-[8.5px] text-zinc-550 uppercase">Start</span>
-            <input 
-              type="date"
-              value={exportStartDate}
-              onChange={(e) => setExportStartDate(e.target.value)}
-              className="bg-transparent border-none text-[10px] text-zinc-300 outline-none w-28 focus:text-white"
-            />
+        <div className="flex flex-wrap items-center gap-2.5">
+          <div className="flex items-center gap-2 bg-zinc-950/60 border border-zinc-800 px-3 py-1.5 rounded-xl">
+            <span className="text-[8.5px] text-zinc-500 uppercase">Start</span>
+            <input type="date" value={exportStartDate} onChange={(e) => setExportStartDate(e.target.value)} className="bg-transparent border-none text-[10px] text-zinc-300 outline-none w-28 focus:text-white" />
           </div>
-
-          <div className="flex items-center gap-2 bg-zinc-950 border border-zinc-850 px-3 py-1.5 rounded-xl">
-            <span className="text-[8.5px] text-zinc-550 uppercase">End</span>
-            <input 
-              type="date"
-              value={exportEndDate}
-              onChange={(e) => setExportEndDate(e.target.value)}
-              className="bg-transparent border-none text-[10px] text-zinc-300 outline-none w-28 focus:text-white"
-            />
+          <div className="flex items-center gap-2 bg-zinc-950/60 border border-zinc-800 px-3 py-1.5 rounded-xl">
+            <span className="text-[8.5px] text-zinc-500 uppercase">End</span>
+            <input type="date" value={exportEndDate} onChange={(e) => setExportEndDate(e.target.value)} className="bg-transparent border-none text-[10px] text-zinc-300 outline-none w-28 focus:text-white" />
           </div>
-
           {(exportStartDate || exportEndDate) && (
-            <button
-              onClick={() => { setExportStartDate(''); setExportEndDate(''); triggerToast('Cleared temporal boundary constraints.', 'info'); }}
-              className="px-2.5 py-1.5 rounded-lg border border-red-950/40 text-red-500 hover:text-white hover:bg-neutral-802 transition-all cursor-pointer text-[9px] uppercase font-bold"
-            >
-              Clear Boundary
+            <button onClick={() => { setExportStartDate(''); setExportEndDate(''); }} className="px-2.5 py-1.5 rounded-lg border border-red-900/40 text-red-500 hover:text-white transition text-[9px] uppercase font-bold cursor-pointer">
+              Clear
             </button>
           )}
         </div>
@@ -1213,51 +1373,53 @@ export default function CrmPanel({
         <div className="animate-fade-in space-y-8">
           {/* Bento Stats Grid */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            
-            <div className="bg-zinc-900/15 border border-zinc-900/80 p-5 rounded-2xl flex flex-col justify-between hover:border-gold-500/20 transition group">
-              <span className="font-mono text-[9px] uppercase tracking-wider text-zinc-550 block mb-3 group-hover:text-zinc-450">Active Specs</span>
+            <div className="relative overflow-hidden bg-gradient-to-br from-zinc-900/80 to-zinc-950 border border-zinc-800/60 p-5 rounded-2xl flex flex-col justify-between hover:border-amber-500/30 transition-all group shadow-lg">
+              <div className="absolute top-0 right-0 w-24 h-24 bg-emerald-500/5 rounded-full blur-2xl pointer-events-none" />
+              <span className="font-mono text-[9px] uppercase tracking-wider text-zinc-500 block mb-3 group-hover:text-zinc-400">Active Specs</span>
               <div className="flex items-baseline gap-1.5">
                 <span className="text-3xl font-mono text-white font-bold">{activeCount}</span>
-                <span className="text-[10px] text-zinc-500">artworks</span>
+                <span className="text-[10px] text-emerald-400 font-bold">live</span>
               </div>
-              <div className="text-[8.5px] font-mono text-zinc-650 mt-4 border-t border-zinc-900/75 pt-2 flex items-center gap-1">
-                <Check className="w-3 h-3 text-gold-500" /> Currently live in grid
+              <div className="text-[8.5px] font-mono text-zinc-600 mt-4 border-t border-zinc-800/60 pt-2 flex items-center gap-1">
+                <Check className="w-3 h-3 text-emerald-500" /> Currently live in grid
               </div>
             </div>
 
-            <div className="bg-zinc-900/15 border border-zinc-900/80 p-5 rounded-2xl flex flex-col justify-between hover:border-gold-500/20 transition group">
-              <span className="font-mono text-[9px] uppercase tracking-wider text-zinc-550 block mb-3 group-hover:text-zinc-450">Archived Specs</span>
+            <div className="relative overflow-hidden bg-gradient-to-br from-zinc-900/80 to-zinc-950 border border-zinc-800/60 p-5 rounded-2xl flex flex-col justify-between hover:border-amber-500/30 transition-all group shadow-lg">
+              <div className="absolute top-0 right-0 w-24 h-24 bg-amber-500/5 rounded-full blur-2xl pointer-events-none" />
+              <span className="font-mono text-[9px] uppercase tracking-wider text-zinc-500 block mb-3 group-hover:text-zinc-400">Archived Specs</span>
               <div className="flex items-baseline gap-1.5">
                 <span className="text-3xl font-mono text-zinc-400 font-bold">{archivedCount}</span>
                 <span className="text-[10px] text-zinc-500">blueprints</span>
               </div>
-              <div className="text-[8.5px] font-mono text-zinc-650 mt-4 border-t border-zinc-900/75 pt-2 flex items-center gap-1">
+              <div className="text-[8.5px] font-mono text-zinc-600 mt-4 border-t border-zinc-800/60 pt-2 flex items-center gap-1">
                 <Archive className="w-3 h-3 text-amber-500" /> Preserved but hidden
               </div>
             </div>
 
-            <div className="bg-zinc-900/15 border border-zinc-900/80 p-5 rounded-2xl flex flex-col justify-between hover:border-gold-500/20 transition group">
-              <span className="font-mono text-[9px] uppercase tracking-wider text-zinc-550 block mb-3 group-hover:text-zinc-450">Super-Admin uploads</span>
+            <div className="relative overflow-hidden bg-gradient-to-br from-zinc-900/80 to-zinc-950 border border-zinc-800/60 p-5 rounded-2xl flex flex-col justify-between hover:border-amber-500/30 transition-all group shadow-lg">
+              <div className="absolute top-0 right-0 w-24 h-24 bg-amber-500/8 rounded-full blur-2xl pointer-events-none" />
+              <span className="font-mono text-[9px] uppercase tracking-wider text-zinc-500 block mb-3 group-hover:text-zinc-400">Admin Uploads</span>
               <div className="flex items-baseline gap-1.5">
-                <span className="text-3xl font-mono text-gold-400 font-bold">{totalCustomUploaded}</span>
-                <span className="text-[10px] text-zinc-500">Firestore entries</span>
+                <span className="text-3xl font-mono text-amber-400 font-bold">{totalCustomUploaded}</span>
+                <span className="text-[10px] text-zinc-500">entries</span>
               </div>
-              <div className="text-[8.5px] font-mono text-zinc-650 mt-4 border-t border-zinc-900/75 pt-2 flex items-center gap-1">
-                <Database className="w-3 h-3 text-gold-400" /> Synced to cloud storage
+              <div className="text-[8.5px] font-mono text-zinc-600 mt-4 border-t border-zinc-800/60 pt-2 flex items-center gap-1">
+                <Database className="w-3 h-3 text-amber-400" /> Synced to cloud
               </div>
             </div>
 
-            <div className="bg-zinc-900/15 border border-zinc-900/80 p-5 rounded-2xl flex flex-col justify-between hover:border-gold-500/20 transition group">
-              <span className="font-mono text-[9px] uppercase tracking-wider text-zinc-550 block mb-3 group-hover:text-zinc-450">Mock Scan Actions</span>
+            <div className="relative overflow-hidden bg-gradient-to-br from-zinc-900/80 to-zinc-950 border border-zinc-800/60 p-5 rounded-2xl flex flex-col justify-between hover:border-amber-500/30 transition-all group shadow-lg">
+              <div className="absolute top-0 right-0 w-24 h-24 bg-blue-500/5 rounded-full blur-2xl pointer-events-none" />
+              <span className="font-mono text-[9px] uppercase tracking-wider text-zinc-500 block mb-3 group-hover:text-zinc-400">Mock Scans</span>
               <div className="flex items-baseline gap-1.5">
                 <span className="text-3xl font-mono text-white font-bold">1,842</span>
-                <span className="text-[10px] text-gold-500 font-bold">+18% wk</span>
+                <span className="text-[10px] text-emerald-400 font-bold">+18% wk</span>
               </div>
-              <div className="text-[8.5px] font-mono text-zinc-650 mt-4 border-t border-zinc-900/75 pt-2 flex items-center gap-1">
+              <div className="text-[8.5px] font-mono text-zinc-600 mt-4 border-t border-zinc-800/60 pt-2 flex items-center gap-1">
                 <Eye className="w-3 h-3 text-emerald-500" /> Dynamic customer scans
               </div>
             </div>
-
           </div>
 
           {/* Visualization Charts Row */}
@@ -1272,9 +1434,9 @@ export default function CrmPanel({
                 <span className="font-mono text-[9px] text-zinc-500">Live DB Track</span>
               </div>
               
-              <div className="h-64 w-full">
-                <ResponsiveContainer width="100%" height="105%">
-                  <LineChart data={weeklySubmissionData} margin={{ top: 10, right: 15, left: -25, bottom: 5 }}>
+              <div ref={lineChartRef} className="h-64 w-full">
+                {lineChartSize.width > 0 && lineChartSize.height > 0 && (
+                  <LineChart width={lineChartSize.width} height={lineChartSize.height} data={weeklySubmissionData} margin={{ top: 10, right: 15, left: -25, bottom: 5 }}>
                     <CartesianGrid stroke="#18181b" strokeDasharray="3 3" />
                     <XAxis dataKey="name" stroke="#52525b" style={{ fontSize: 9, fontFamily: 'monospace' }} />
                     <YAxis stroke="#52525b" style={{ fontSize: 9, fontFamily: 'monospace' }} />
@@ -1285,7 +1447,7 @@ export default function CrmPanel({
                     />
                     <Line type="monotone" dataKey="Count" stroke="#d4af37" strokeWidth={2.5} activeDot={{ r: 6 }} dot={{ fill: '#d4af37' }} />
                   </LineChart>
-                </ResponsiveContainer>
+                )}
               </div>
             </div>
 
@@ -1297,9 +1459,9 @@ export default function CrmPanel({
                 </span>
               </div>
 
-              <div className="h-44 w-full relative flex items-center justify-center">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
+              <div ref={pieChartRef} className="h-44 w-full relative flex items-center justify-center">
+                {pieChartSize.width > 0 && pieChartSize.height > 0 && (
+                  <PieChart width={pieChartSize.width} height={pieChartSize.height}>
                     <Pie
                       data={categoryDistributionData}
                       cx="50%"
@@ -1318,7 +1480,7 @@ export default function CrmPanel({
                       contentStyle={{ backgroundColor: '#09090b', borderColor: '#27272a', borderRadius: '8px', fontSize: '10px' }}
                     />
                   </PieChart>
-                </ResponsiveContainer>
+                )}
                 
                 {/* Center count marker */}
                 <div className="absolute inset-x-0 inset-y-0 flex flex-col items-center justify-center pointer-events-none">
@@ -1353,9 +1515,9 @@ export default function CrmPanel({
                 <span className="font-mono text-[8.5px] text-zinc-550 lowercase italic">Calculated live via user event loops</span>
               </div>
 
-              <div className="h-64 w-full">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={engagementMetricsData} margin={{ top: 10, right: 10, left: -25, bottom: 5 }}>
+              <div ref={barChartRef} className="h-64 w-full">
+                {barChartSize.width > 0 && barChartSize.height > 0 && (
+                  <BarChart width={barChartSize.width} height={barChartSize.height} data={engagementMetricsData} margin={{ top: 10, right: 10, left: -25, bottom: 5 }}>
                     <CartesianGrid stroke="#18181b" strokeDasharray="3 3" />
                     <XAxis dataKey="name" stroke="#52525b" style={{ fontSize: 9, fontFamily: 'monospace' }} />
                     <YAxis stroke="#52525b" style={{ fontSize: 9, fontFamily: 'monospace' }} />
@@ -1369,7 +1531,7 @@ export default function CrmPanel({
                     <Bar dataKey="Previews" fill="#d4af37" />
                     <Bar dataKey="Shares" fill="#e2e8f0" />
                   </BarChart>
-                </ResponsiveContainer>
+                )}
               </div>
             </div>
 
@@ -1538,7 +1700,7 @@ export default function CrmPanel({
                               </div>
                               <p className="text-zinc-400 text-[9.5px] font-sans leading-tight">{log.details}</p>
                               <span className="text-[7.5px] text-zinc-650 uppercase font-semibold flex items-center gap-0.5 pt-0.5">
-                                <ShieldCheck className="w-2.5 h-2.5 text-zinc-600 block" /> By {log.adminEmail.split('@')[0]}
+                                <ShieldCheck className="w-2.5 h-2.5 text-zinc-600 block" /> By {(log.adminEmail || '').split('@')[0]}
                               </span>
                             </div>
                           </motion.div>
@@ -1568,93 +1730,75 @@ export default function CrmPanel({
         <div className="animate-fade-in space-y-6">
           
           {/* Action Row */}
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-zinc-905 p-4 rounded-2xl border border-zinc-900">
-            
-            {/* Left elements: search and category/status filters */}
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-gradient-to-r from-zinc-900/60 to-zinc-900/30 backdrop-blur-sm p-4 rounded-2xl border border-zinc-800/60 shadow-lg">
+            {/* Left: search and filters */}
             <div className="flex flex-wrap items-center gap-3">
               <div className="relative">
                 <Search className="w-3.5 h-3.5 absolute left-3 top-3 text-zinc-500" />
                 <input
                   type="text"
-                  placeholder="Search by Title, ID, or Category..."
+                  placeholder="Search by title, ID, category..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="bg-zinc-950 border border-zinc-900 rounded-xl pl-9 pr-4 py-2 text-[10px] text-white focus:outline-none focus:border-gold-500 transition font-mono w-56"
+                  className="bg-zinc-950/80 border border-zinc-700/60 rounded-xl pl-9 pr-4 py-2.5 text-[11px] text-white placeholder-zinc-600 focus:outline-none focus:border-amber-500/50 focus:shadow-[0_0_0_2px_rgba(245,158,11,0.1)] transition w-56 font-mono"
                 />
               </div>
-
-              <select
-                value={categoryFilter}
-                onChange={(e) => setCategoryFilter(e.target.value)}
-                className="bg-zinc-950 border border-zinc-900 rounded-xl px-3 py-2 text-[10px] text-zinc-400 focus:outline-none focus:border-gold-500 transition font-mono"
-              >
+              <select value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value)} className="bg-zinc-950/80 border border-zinc-700/60 rounded-xl px-3 py-2.5 text-[11px] text-zinc-300 focus:outline-none focus:border-amber-500/50 transition font-mono cursor-pointer">
                 <option value="all">All Sectors</option>
                 <option value="minimalist">Minimalist Luxury</option>
                 <option value="fitness">Cyber Fitness</option>
                 <option value="fashion">Fashion Editorial</option>
                 <option value="offers">Retail & Offers</option>
               </select>
-
-              <select
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
-                className="bg-zinc-950 border border-zinc-900 rounded-xl px-3 py-2 text-[10px] text-zinc-400 focus:outline-none focus:border-gold-400 transition font-mono"
-              >
+              <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="bg-zinc-950/80 border border-zinc-700/60 rounded-xl px-3 py-2.5 text-[11px] text-zinc-300 focus:outline-none focus:border-amber-500/50 transition font-mono cursor-pointer">
                 <option value="all">All Statuses</option>
                 <option value="Live">Live</option>
                 <option value="Pending Approval">Pending Approval</option>
                 <option value="Archived">Archived</option>
               </select>
-
-              <span className="text-[9.5px] font-mono text-zinc-500 pl-1 shrink-0">
-                Matches: <strong className="text-zinc-300 font-extrabold">{filteredPosters.length}</strong> of {posters.length} specifications
+              <span className="text-[10px] font-mono text-zinc-500 pl-1 shrink-0">
+                <strong className="text-zinc-200 font-bold">{filteredPosters.length}</strong> / {posters.length} specs
               </span>
-
               {(searchTerm || categoryFilter !== 'all' || statusFilter !== 'all') && (
-                <button
-                  onClick={() => { setSearchTerm(''); setCategoryFilter('all'); setStatusFilter('all'); }}
-                  className="font-mono text-[9px] text-zinc-500 hover:text-white uppercase shrink-0 px-2 py-1 rounded hover:bg-zinc-900 transition flex items-center gap-1"
-                >
-                  <X className="w-3 h-3" /> Clear Filters
+                <button onClick={() => { setSearchTerm(''); setCategoryFilter('all'); setStatusFilter('all'); }} className="font-mono text-[10px] text-zinc-500 hover:text-white uppercase shrink-0 px-2 py-1.5 rounded-lg hover:bg-zinc-800/60 transition flex items-center gap-1 cursor-pointer">
+                  <X className="w-3 h-3" /> Clear
                 </button>
               )}
             </div>
 
-            {/* Right element: Export button, Deploy button, and bulk control trigger button */}
+            {/* Right: actions */}
             <div className="flex items-center flex-wrap gap-2 font-mono text-[10px]">
-              <button
-                onClick={exportPostersCSV}
-                className="py-2.5 px-3 rounded-xl bg-zinc-950 hover:bg-zinc-900 border border-zinc-900 text-zinc-300 font-bold flex items-center gap-1.5 cursor-pointer transition active:scale-95"
-                title="Export all database custom posters as CSV"
-              >
+              <button onClick={exportPostersCSV} className="py-2.5 px-3 rounded-xl bg-zinc-950/80 hover:bg-zinc-900 border border-zinc-700/60 text-zinc-300 font-bold flex items-center gap-1.5 cursor-pointer transition active:scale-95 hover:border-zinc-600" title="Export CSV">
                 <Download className="w-3.5 h-3.5 text-zinc-400" />
-                <span>Export Specs (CSV)</span>
+                <span>Export CSV</span>
               </button>
-
               <button
                 onClick={() => setShowBulkControls(!showBulkControls)}
                 className={`py-2.5 px-3 rounded-xl transition-all flex items-center gap-1.5 cursor-pointer border ${
-                  showBulkControls 
-                    ? 'bg-zinc-900 text-gold-400 border-gold-500/30' 
-                    : 'bg-zinc-950 hover:bg-zinc-900 text-zinc-500 hover:text-white border-zinc-900'
+                  showBulkControls ? 'bg-amber-500/10 text-amber-400 border-amber-500/30' : 'bg-zinc-950/80 hover:bg-zinc-900 text-zinc-500 hover:text-white border-zinc-700/60'
                 }`}
               >
                 <CheckSquare className="w-3.5 h-3.5" />
-                <span>Bulk Controls {selectedIds.length > 0 ? `(${selectedIds.length})` : ''}</span>
+                <span>Bulk {selectedIds.length > 0 ? `(${selectedIds.length})` : ''}</span>
               </button>
-
+              {posters.length > 0 && (
+                <button
+                  onClick={handleDeleteAll}
+                  className="py-2.5 px-3 rounded-xl bg-red-950/30 hover:bg-red-950/60 border border-red-900/40 text-red-400 hover:text-red-300 font-bold flex items-center gap-1.5 cursor-pointer transition active:scale-95"
+                  title="Permanently delete all posters"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  <span>Purge All ({posters.length})</span>
+                </button>
+              )}
               <button
-                onClick={() => {
-                  handleResetForm();
-                  setIsModalOpen(true);
-                }}
-                className="py-2.5 px-4 rounded-xl bg-gold-400 hover:bg-gold-500 text-black font-extrabold flex items-center gap-1.5 cursor-pointer transition active:scale-95 shadow-lg shadow-gold-500/10"
+                onClick={() => { handleResetForm(); setIsModalOpen(true); }}
+                className="py-2.5 px-4 rounded-xl bg-gradient-to-r from-amber-500 to-yellow-400 hover:from-amber-400 hover:to-yellow-300 text-black font-extrabold flex items-center gap-1.5 cursor-pointer transition-all active:scale-[0.98] shadow-md shadow-amber-500/15"
               >
                 <PlusCircle className="w-3.5 h-3.5" />
                 <span>Deploy New Spec</span>
               </button>
             </div>
-
           </div>
 
           {/* Bulk Controls Pane */}
@@ -1760,43 +1904,73 @@ export default function CrmPanel({
             )}
           </AnimatePresence>
 
-          {/* Secure Table View */}
-          <div className="bg-zinc-905 border border-zinc-900 rounded-2xl overflow-hidden shadow-2xl">
+          {/* Premium Table View */}
+          <div className="bg-zinc-950/40 border border-zinc-800/60 rounded-2xl overflow-hidden shadow-2xl backdrop-blur-sm">
             <div className="overflow-x-auto w-full">
-              <table className="w-full text-left font-mono text-[10px] divide-y divide-zinc-900 select-none">
+              <table className="w-full text-left font-mono text-[11px] divide-y divide-zinc-800/50 select-none">
                 
                 {/* Table Header */}
-                <thead className="bg-zinc-950 text-zinc-500 uppercase tracking-widest text-[9px] font-bold">
+                <thead className="bg-zinc-900/60 text-zinc-500 uppercase tracking-widest text-[9px] font-bold">
                   <tr>
                     <th className="py-4 px-5 text-center w-12">
-                      <button
-                        type="button"
-                        onClick={() => toggleSelectAll(filteredPosters)}
-                        className="p-1 text-zinc-600 hover:text-white transition cursor-pointer"
-                        title="Toggle select all visible"
-                      >
-                        {selectedIds.length === filteredPosters.length && filteredPosters.length > 0 ? (
-                          <MinusSquare className="w-4 h-4 text-gold-400" />
-                        ) : (
-                          <Square className="w-4 h-4" />
-                        )}
+                      <button type="button" onClick={() => toggleSelectAll(filteredPosters)} className="p-1 text-zinc-600 hover:text-white transition cursor-pointer" title="Select all">
+                        {selectedIds.length === filteredPosters.length && filteredPosters.length > 0 ? <MinusSquare className="w-4 h-4 text-amber-400" /> : <Square className="w-4 h-4" />}
                       </button>
                     </th>
-                    <th className="py-4 px-3 w-40">Artwork ID & Thumb</th>
-                    <th className="py-4 px-3 w-64">Design Specifications</th>
-                    <th className="py-4 px-3 w-44">Brand Theme Way</th>
-                    <th className="py-4 px-3">Classification Tokens</th>
-                    <th className="py-4 px-3 w-36">Workflow Status</th>
-                    <th className="py-4 px-5 text-right w-40">Actions</th>
+                    <th className="py-4 px-3 w-44">Artwork</th>
+                    <th className="py-4 px-3 w-64">Design Specs</th>
+                    <th className="py-4 px-3 w-44">Brand Theme</th>
+                    <th className="py-4 px-3">Tags</th>
+                    <th className="py-4 px-3 w-36">Status</th>
+                    <th className="py-4 px-5 text-right w-48">Actions</th>
                   </tr>
                 </thead>
 
                 {/* Table Body */}
-                <tbody className="divide-y divide-zinc-900 bg-zinc-905">
+                <tbody className="divide-y divide-zinc-800/30 bg-zinc-950/20">
                   {filteredPosters.length === 0 ? (
                     <tr>
-                      <td colSpan={6} className="py-12 text-center text-zinc-600 italic">
-                        No custom blueprints matches specified directory filter.
+                      <td colSpan={7} className="py-20 text-center">
+                        <div className="flex flex-col items-center gap-4">
+                          {posters.length === 0 ? (
+                            /* Truly empty — no posters in DB */
+                            <>
+                              <div className="relative">
+                                <div className="w-20 h-20 rounded-3xl bg-zinc-900/80 border border-zinc-800/60 flex items-center justify-center shadow-xl">
+                                  <PlusCircle className="w-9 h-9 text-zinc-700" />
+                                </div>
+                                <div className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-amber-500/20 border border-amber-500/30 flex items-center justify-center">
+                                  <span className="text-amber-400 text-[8px] font-bold">0</span>
+                                </div>
+                              </div>
+                              <div>
+                                <p className="text-zinc-300 font-bold text-base mb-1">Canvas is empty</p>
+                                <p className="text-zinc-600 text-[11px] font-mono max-w-xs mx-auto leading-relaxed">
+                                  No poster specifications have been deployed yet. Create your first one to get started.
+                                </p>
+                              </div>
+                              <button
+                                onClick={() => { handleResetForm(); setIsModalOpen(true); }}
+                                className="inline-flex items-center gap-2 py-3 px-6 rounded-2xl bg-gradient-to-r from-amber-500 to-yellow-400 hover:from-amber-400 hover:to-yellow-300 text-black font-extrabold text-sm shadow-lg shadow-amber-500/20 transition-all active:scale-[0.98] cursor-pointer"
+                              >
+                                <PlusCircle className="w-4 h-4" />
+                                <span>Deploy First Poster</span>
+                              </button>
+                            </>
+                          ) : (
+                            /* Has posters but filters hide them */
+                            <>
+                              <Database className="w-10 h-10 text-zinc-800" />
+                              <div>
+                                <p className="text-zinc-400 font-bold text-[13px] mb-1">No results match your filters</p>
+                                <p className="text-zinc-600 text-[11px] font-mono">{posters.length} poster(s) exist in the database.</p>
+                              </div>
+                              <button onClick={() => { setSearchTerm(''); setCategoryFilter('all'); setStatusFilter('all'); }} className="text-amber-400 text-[10px] font-mono uppercase hover:text-amber-300 transition cursor-pointer border border-amber-500/20 px-3 py-1.5 rounded-lg hover:bg-amber-500/5">
+                                Clear all filters
+                              </button>
+                            </>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   ) : (
@@ -1810,121 +1984,106 @@ export default function CrmPanel({
                           onDragOver={(e) => e.preventDefault()}
                           onDrop={() => handleRowDrop(index)}
                           onDragEnd={() => setDraggedIndex(null)}
-                          onContextMenu={(e) => {
-                            e.preventDefault();
-                            setContextMenu({ x: e.clientX, y: e.clientY, poster: item });
-                          }}
-                          className={`hover:bg-zinc-900/10 transition-colors cursor-grab active:cursor-grabbing select-none ${
-                            isSelected ? 'bg-gold-950/5' : ''
-                          } ${
-                            draggedIndex === index ? 'opacity-35 bg-gold-950/35 border-2 border-dashed border-gold-500/50' : ''
-                          }`}
-                          title="Drag and drop this row to re-order portfolio priorities"
+                          onContextMenu={(e) => { e.preventDefault(); setContextMenu({ x: e.clientX, y: e.clientY, poster: item }); }}
+                          className={`group hover:bg-zinc-800/20 transition-all cursor-grab active:cursor-grabbing select-none ${
+                            isSelected ? 'bg-amber-500/5 border-l-2 border-l-amber-500/40' : ''
+                          } ${draggedIndex === index ? 'opacity-35 bg-amber-950/30 border-2 border-dashed border-amber-500/40' : ''}`}
+                          title="Right-click for quick actions"
                         >
-                          {/* Selector ChkBx & Drag handle grip */}
-                          <td className="py-3 px-5 text-center">
+                          {/* Selector */}
+                          <td className="py-3.5 px-5 text-center">
                             <div className="flex items-center justify-center gap-1">
-                              <span className="text-zinc-650 cursor-grab active:cursor-grabbing font-bold select-none pr-1">:::</span>
-                              <button
-                                type="button"
-                                onClick={() => toggleSelectRow(item.id)}
-                                className="p-1 transition text-zinc-600 hover:text-gold-400 cursor-pointer"
-                              >
-                                {isSelected ? (
-                                  <CheckSquare className="w-4 h-4 text-gold-400" />
-                                ) : (
-                                  <Square className="w-4 h-4" />
-                                )}
+                              <span className="text-zinc-700 cursor-grab font-bold select-none pr-1 group-hover:text-zinc-500">⠿</span>
+                              <button type="button" onClick={() => toggleSelectRow(item.id)} className="p-1 transition text-zinc-600 hover:text-amber-400 cursor-pointer">
+                                {isSelected ? <CheckSquare className="w-4 h-4 text-amber-400" /> : <Square className="w-4 h-4" />}
                               </button>
                             </div>
                           </td>
 
                           {/* Thumbnail / ID */}
-                          <td className="py-3 px-3">
+                          <td className="py-3.5 px-3">
                             <div className="flex items-center gap-3">
-                              <div className="w-10 h-12 bg-zinc-950 rounded border border-zinc-850 overflow-hidden relative shrink-0 flex items-center justify-center text-zinc-800">
+                              <div className="w-11 h-14 bg-zinc-950 rounded-lg border border-zinc-800/60 overflow-hidden relative shrink-0 flex items-center justify-center text-zinc-800 shadow-md">
                                 {item.bgType === 'image' ? (
-                                  <img src={item.bgValue} loading="lazy" alt="" className="w-full h-full object-cover opacity-60" />
+                                  <img src={item.bgValue} loading="lazy" alt="" className="w-full h-full object-cover opacity-70 group-hover:opacity-90 transition" />
                                 ) : (
-                                  <div className="w-full h-full opacity-60" style={{ background: item.bgValue }} />
+                                  <div className="w-full h-full opacity-70" style={{ background: item.bgValue }} />
                                 )}
-                                <span className="absolute bottom-0 inset-x-0 bg-black/70 text-[6px] text-center uppercase text-zinc-550 font-bold p-0.5 truncate">
+                                <span className="absolute bottom-0 inset-x-0 bg-black/80 text-[6px] text-center uppercase text-zinc-500 font-bold p-0.5 truncate">
                                   {item.bgType}
                                 </span>
                               </div>
                               <div className="min-w-0">
-                                <span className="text-[8px] text-zinc-600 block leading-tight truncate">#{index + 1}</span>
-                                <span className="text-zinc-400 font-bold block truncate max-w-[80px]" title={item.id}>
+                                <span className="text-[8px] text-zinc-600 block leading-tight">#{index + 1}</span>
+                                <span className="text-zinc-400 font-bold block truncate max-w-[80px] text-[10px]" title={item.id}>
                                   {item.id.replace('custom-project-', 'cust_')}
                                 </span>
                               </div>
                             </div>
                           </td>
 
-                          {/* Artwork Specification */}
-                          <td className="py-3 px-3">
+                          {/* Artwork Specs */}
+                          <td className="py-3.5 px-3">
                             <div className="min-w-0">
-                              <div className="flex items-center gap-1.5 flex-wrap">
-                                <span className="text-white font-bold font-sans text-xs truncate max-w-[150px]">{item.title}</span>
+                              <div className="flex items-center gap-1.5 flex-wrap mb-0.5">
+                                <span className="text-white font-bold font-sans text-[12px] truncate max-w-[160px]">{item.title}</span>
                                 {item.badge && (
-                                  <span className="text-[7px] border border-gold-500/30 text-gold-400 bg-gold-950/25 px-1 py-0.2 rounded font-mono font-bold leading-none shrink-0 uppercase">
+                                  <span className="text-[7px] border border-amber-500/30 text-amber-400 bg-amber-950/20 px-1 py-0.5 rounded font-mono font-bold leading-none shrink-0 uppercase">
                                     {item.badge}
                                   </span>
                                 )}
                                 {item.archived && (
-                                  <span className="text-[7px] border border-amber-500/40 text-amber-500 bg-amber-950/25 px-1 py-0.2 rounded font-mono font-bold leading-none shrink-0 uppercase">
-                                    ARCHIVED
-                                  </span>
+                                  <span className="text-[7px] border border-amber-500/40 text-amber-500 bg-amber-950/25 px-1 py-0.5 rounded font-mono font-bold leading-none shrink-0 uppercase">ARCHIVED</span>
                                 )}
                               </div>
-                              <span className="text-zinc-500 block truncate text-[9px] uppercase mt-0.5 leading-none">{item.subtitle}</span>
-                              <span className="text-zinc-600 block line-clamp-1 font-sans text-[9px] mt-1 pr-1">{item.details}</span>
+                              <span className="text-zinc-500 block truncate text-[10px] uppercase mt-0.5">{item.subtitle}</span>
+                              <span className="text-zinc-600 block line-clamp-1 font-sans text-[10px] mt-0.5 pr-1">{item.details}</span>
                             </div>
                           </td>
 
-                          {/* Brand theme parameters */}
-                          <td className="py-3 px-3 text-zinc-450">
-                            <span className="font-bold text-zinc-300 block">{item.theme}</span>
-                            <div className="flex items-center gap-1.5 mt-1 font-mono text-[8px]">
-                              <span className="w-2.5 h-2.5 rounded-sm border border-zinc-800 shrink-0 shadow-sm" style={{ backgroundColor: item.accentColor }} />
-                              <span className="text-zinc-550 shrink-0">{item.accentColor}</span>
-                              <span className="text-zinc-650">|</span>
-                              <span className="text-zinc-550 shrink-0">{item.fontTitle.split(' ').slice(0,1)}</span>
+                          {/* Brand theme */}
+                          <td className="py-3.5 px-3 text-zinc-400">
+                            <span className="font-bold text-zinc-200 block text-[11px]">{item.theme}</span>
+                            <div className="flex items-center gap-1.5 mt-1 font-mono text-[9px]">
+                              <span className="w-3 h-3 rounded-sm border border-zinc-700 shrink-0 shadow-sm" style={{ backgroundColor: item.accentColor }} />
+                              <span className="text-zinc-500 shrink-0">{item.accentColor}</span>
+                              <span className="text-zinc-700">|</span>
+                              <span className="text-zinc-500 shrink-0">{(item.fontTitle || '').split(' ').slice(0,1)}</span>
                             </div>
                           </td>
 
-                          {/* Sector Classification tag indices */}
-                          <td className="py-3 px-3 text-zinc-500">
-                            <span className="inline-block px-1.5 py-0.5 rounded border border-zinc-850 bg-zinc-950 text-[8px] text-zinc-400 font-bold uppercase leading-none mb-1">
+                          {/* Tags */}
+                          <td className="py-3.5 px-3 text-zinc-500">
+                            <span className="inline-block px-2 py-0.5 rounded-lg border border-zinc-800/60 bg-zinc-900/60 text-[9px] text-zinc-400 font-bold uppercase leading-none mb-1.5">
                               {item.category === 'fitness' ? 'cyber fitness' : item.category === 'all' ? 'generic' : item.category}
                             </span>
-                            <p className="text-[8px] text-zinc-550 line-clamp-1 pr-1">
+                            <p className="text-[9px] text-zinc-600 line-clamp-1 pr-1">
                               {(item.keywords || []).slice(0, 3).join(', ').toLowerCase()}
                             </p>
                           </td>
 
-                          {/* Workflow Status badges under the CRM table */}
-                          <td className="py-3 px-3">
+                          {/* Workflow Status */}
+                          <td className="py-3.5 px-3">
                             {(() => {
                               const itemStatus = item.status || (item.archived ? 'Archived' : 'Live');
                               if (itemStatus === 'Live') {
                                 return (
-                                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-emerald-500/20 bg-emerald-950/25 text-[8px] text-emerald-400 font-extrabold uppercase shrink-0">
-                                    <span className="w-1 h-1 rounded-full bg-emerald-400 animate-pulse" />
+                                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-emerald-500/25 bg-emerald-950/30 text-[9px] text-emerald-400 font-extrabold uppercase">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
                                     <span>Live</span>
                                   </span>
                                 );
                               } else if (itemStatus === 'Pending Approval') {
                                 return (
-                                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-amber-500/20 bg-amber-950/25 text-[8px] text-amber-400 font-extrabold uppercase shrink-0">
-                                    <span className="w-1 h-1 rounded-full bg-amber-400 animate-pulse" />
+                                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-amber-500/25 bg-amber-950/30 text-[9px] text-amber-400 font-extrabold uppercase">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
                                     <span>Pending</span>
                                   </span>
                                 );
                               } else {
                                 return (
-                                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-zinc-800 bg-zinc-900/65 text-[8px] text-zinc-400 font-extrabold uppercase shrink-0">
-                                    <span className="w-1 h-1 rounded-full bg-zinc-500" />
+                                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-zinc-700/40 bg-zinc-900/60 text-[9px] text-zinc-500 font-extrabold uppercase">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-zinc-600" />
                                     <span>Archived</span>
                                   </span>
                                 );
@@ -1933,53 +2092,23 @@ export default function CrmPanel({
                           </td>
 
                           {/* Actions */}
-                          <td className="py-3 px-5 text-right whitespace-nowrap">
-                            <div className="inline-flex items-center gap-1.5">
-                              <button
-                                onClick={() => setQuickPreviewPoster(item)}
-                                className="p-[3px] px-2 rounded hover:bg-zinc-900 hover:text-emerald-400 text-zinc-400 border border-zinc-900 hover:border-zinc-800 transition flex items-center gap-1 cursor-pointer font-bold uppercase text-[8px]"
-                                title="Quick poster blueprint design preview modal"
-                              >
-                                <Eye className="w-3 h-3 text-emerald-500" />
-                                <span>Preview</span>
+                          <td className="py-3.5 px-5 text-right whitespace-nowrap">
+                            <div className="inline-flex items-center gap-1">
+                              <button onClick={() => setQuickPreviewPoster(item)} className="p-2 rounded-lg hover:bg-zinc-800/60 hover:text-emerald-400 text-zinc-500 transition flex items-center gap-1 cursor-pointer text-[9px] font-bold uppercase" title="Preview">
+                                <Eye className="w-3.5 h-3.5 text-emerald-500" />
                               </button>
-                              <button
-                                onClick={() => {
-                                  setDrawerPoster(item);
-                                  const matchedThemeKey = Object.keys(THEME_STYLES).find(
-                                    k => THEME_STYLES[k].name.toLowerCase() === (item.theme || '').toLowerCase()
-                                  ) || 'obsidian-gold';
-                                  setDrawerTheme(matchedThemeKey);
-                                }}
-                                className="p-[3px] px-2 rounded hover:bg-zinc-900 hover:text-amber-400 text-zinc-400 border border-zinc-900 hover:border-zinc-800 transition flex items-center gap-1 cursor-pointer font-bold uppercase text-[8px]"
-                                title="Open Live Theme experimental design sandbox drawer"
-                              >
-                                <Sliders className="w-3 h-3 text-amber-500" />
-                                <span>Sandbox</span>
+                              <button onClick={() => { setDrawerPoster(item); const matchedThemeKey = Object.keys(THEME_STYLES).find(k => THEME_STYLES[k].name.toLowerCase() === (item.theme || '').toLowerCase()) || 'obsidian-gold'; setDrawerTheme(matchedThemeKey); }} className="p-2 rounded-lg hover:bg-zinc-800/60 hover:text-amber-400 text-zinc-500 transition flex items-center gap-1 cursor-pointer" title="Sandbox">
+                                <Sliders className="w-3.5 h-3.5 text-amber-500" />
                               </button>
-                              <button
-                                onClick={() => handleEditClick(item)}
-                                className="p-[3px] px-2 rounded hover:bg-zinc-900 hover:text-gold-400 text-zinc-400 border border-zinc-900 hover:border-zinc-800 transition flex items-center gap-1 cursor-pointer font-bold uppercase text-[8px]"
-                                title="Edit layout configuration"
-                              >
-                                <Edit className="w-3 h-3" />
+                              <button onClick={() => handleEditClick(item)} className="p-2 rounded-lg hover:bg-amber-500/10 hover:text-amber-400 text-zinc-500 border border-transparent hover:border-amber-500/20 transition flex items-center gap-1.5 cursor-pointer font-bold uppercase text-[9px]" title="Edit">
+                                <Edit className="w-3.5 h-3.5" />
                                 <span>Edit</span>
                               </button>
-                              <button
-                                onClick={() => handleDuplicateClick(item)}
-                                className="p-[3px] px-2 rounded hover:bg-zinc-900 hover:text-blue-400 text-zinc-400 border border-zinc-900 hover:border-zinc-800 transition flex items-center gap-1 cursor-pointer font-bold uppercase text-[8px]"
-                                title="Duplicate layout spec blueprint template"
-                              >
-                                <Copy className="w-3 h-3 text-blue-500" />
-                                <span>Copy</span>
+                              <button onClick={() => handleDuplicateClick(item)} className="p-2 rounded-lg hover:bg-zinc-800/60 hover:text-blue-400 text-zinc-500 transition cursor-pointer" title="Duplicate">
+                                <Copy className="w-3.5 h-3.5 text-blue-500" />
                               </button>
-                              <button
-                                onClick={() => handleDeleteClick(item)}
-                                className="p-[3px] px-2 rounded hover:bg-zinc-900 hover:text-red-400 text-zinc-550 border border-zinc-900 hover:border-zinc-800 transition flex items-center gap-1 cursor-pointer font-bold uppercase text-[8px]"
-                                title="Purge database specs"
-                              >
-                                <Trash2 className="w-3 h-3" />
-                                <span>Purge</span>
+                              <button onClick={() => handleDeleteClick(item)} className="p-2 rounded-lg hover:bg-red-950/30 hover:text-red-400 text-zinc-600 transition cursor-pointer" title="Delete">
+                                <Trash2 className="w-3.5 h-3.5" />
                               </button>
                             </div>
                           </td>
@@ -1997,50 +2126,65 @@ export default function CrmPanel({
         </div>
       )}
 
-      {/* ────────────────────────────────── TAB 3: CHRONOLOGICAL AUDIT LOGS ────────────────────────────────── */}
+      {/* ── TAB 3: AUDIT LOGS ── */}
       {activeTab === 'logs' && (
         <div className="animate-fade-in space-y-5">
-          <div className="p-4 bg-zinc-905 border border-zinc-900 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 font-mono text-xs">
+          <div className="p-5 bg-gradient-to-r from-zinc-900/60 to-zinc-900/30 border border-zinc-800/60 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 font-mono text-xs backdrop-blur-sm">
             <div>
-              <span className="text-zinc-400 font-extrabold block uppercase">CHRONOLOGICAL SECURED EVENT TRACE DIRECTORY</span>
-              <span className="text-zinc-600 text-[10px]">Security context auth: Mudalvar Admin</span>
+              <span className="text-zinc-200 font-bold block uppercase tracking-wider text-[11px]">Chronological Audit Trail</span>
+              <span className="text-zinc-600 text-[10px]">Secured event history — Mudalvar Admin context</span>
             </div>
-            <button
-              onClick={exportAuditLogsCSV}
-              className="py-2 px-3.5 rounded-xl bg-zinc-950 border border-zinc-900 hover:bg-zinc-900 text-zinc-300 font-extrabold flex items-center gap-1.5 transition active:scale-95 cursor-pointer uppercase text-[10px]"
-            >
+            <button onClick={exportAuditLogsCSV} className="py-2.5 px-4 rounded-xl bg-zinc-950/80 border border-zinc-700/60 hover:bg-zinc-900 text-zinc-300 font-bold flex items-center gap-1.5 transition active:scale-95 cursor-pointer uppercase text-[10px] hover:border-zinc-600">
               <Download className="w-3.5 h-3.5 text-zinc-400" />
-              <span>Export Activity Log (CSV)</span>
+              <span>Export CSV</span>
             </button>
           </div>
 
-          <div className="bg-zinc-905 border border-zinc-900 rounded-2xl overflow-hidden max-h-[500px] overflow-y-auto">
-            <div className="divide-y divide-zinc-900 font-mono text-[10px]">
+          <div className="bg-zinc-950/40 border border-zinc-800/60 rounded-2xl overflow-hidden max-h-[600px] overflow-y-auto backdrop-blur-sm">
+            <div className="divide-y divide-zinc-800/40 font-mono text-[10px]">
               {auditLogs.length === 0 ? (
-                <div className="p-12 text-center text-zinc-600 italic">
-                  No chronological events logged. Syncing with event server pending.
+                <div className="p-16 text-center flex flex-col items-center gap-3">
+                  <History className="w-10 h-10 text-zinc-800" />
+                  <span className="text-zinc-600 italic text-[11px]">No events logged yet.</span>
                 </div>
               ) : (
                 auditLogs.map((log) => (
-                  <div key={log.id} className="p-4 hover:bg-zinc-900/10 transition flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className={`px-2 py-0.5 rounded text-[8px] font-extrabold uppercase shrink-0 bg-zinc-950 border ${
-                          log.action.includes('DELETE') 
-                            ? 'border-red-950 text-red-500' 
-                            : log.action.includes('CREATE') 
-                            ? 'border-gold-500/30 text-gold-400' 
-                            : 'border-zinc-800 text-zinc-400'
-                        }`}>
-                          {log.action}
-                        </span>
-                        <span className="text-white font-bold leading-none">{log.details}</span>
+                  <div key={log.id} className="p-4 hover:bg-zinc-900/20 transition flex flex-col sm:flex-row sm:items-start justify-between gap-3 group">
+                    <div className="flex gap-3 min-w-0">
+                      {/* Timeline dot */}
+                      <div className="flex flex-col items-center shrink-0 pt-1">
+                        <div className={`w-2 h-2 rounded-full mt-0.5 ${
+                          log.action.includes('DELETE') ? 'bg-red-500' :
+                          log.action.includes('CREATE') ? 'bg-amber-400' :
+                          log.action.includes('UPDATE') ? 'bg-blue-400' :
+                          'bg-zinc-600'
+                        }`} />
+                        <div className="w-px flex-1 bg-zinc-800/60 mt-1 min-h-[16px]" />
                       </div>
-                      <p className="text-zinc-650 text-[8.5px] leading-tight">Admin logged context: {log.adminEmail}</p>
+                      <div className="space-y-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className={`px-2 py-0.5 rounded-lg text-[9px] font-extrabold uppercase shrink-0 border ${
+                            log.action.includes('DELETE') 
+                              ? 'border-red-900/40 text-red-400 bg-red-950/20' 
+                              : log.action.includes('CREATE') 
+                              ? 'border-amber-500/30 text-amber-400 bg-amber-950/20' 
+                              : log.action.includes('UPDATE')
+                              ? 'border-blue-800/40 text-blue-400 bg-blue-950/20'
+                              : 'border-zinc-700/40 text-zinc-400 bg-zinc-900/60'
+                          }`}>
+                            {log.action}
+                          </span>
+                          <span className="text-zinc-200 font-bold leading-snug text-[11px] truncate max-w-[400px]">{log.details}</span>
+                        </div>
+                        <p className="text-zinc-600 text-[9px] leading-tight">
+                          <span className="text-zinc-500">{(log.adminEmail || '').split('@')[0]}</span>
+                          <span className="text-zinc-700 mx-1">·</span>
+                          {(log.adminEmail || '').split('@')[1]}
+                        </p>
+                      </div>
                     </div>
-
-                    <div className="text-zinc-550 text-[9px] flex items-center gap-1 opacity-80 shrink-0 self-end sm:self-auto">
-                      <Calendar className="w-3 h-3 text-zinc-600" />
+                    <div className="text-zinc-600 text-[9px] flex items-center gap-1 shrink-0 self-start sm:self-auto pl-5 sm:pl-0">
+                      <Calendar className="w-3 h-3 text-zinc-700" />
                       <span>{new Date(log.timestamp).toLocaleString()}</span>
                     </div>
                   </div>
@@ -2051,7 +2195,7 @@ export default function CrmPanel({
         </div>
       )}
 
-      {/* ────────────────────────────────── MODAL: CREATE / MODIFY FORM ────────────────────────────────── */}
+      {/* ── MODAL: CREATE / MODIFY FORM ── */}
       <AnimatePresence>
         {isModalOpen && (
           <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-45 flex items-center justify-center p-4 overflow-y-auto">
@@ -2063,19 +2207,15 @@ export default function CrmPanel({
             >
               
               {/* Modal header */}
-              <div className="p-6 border-b border-zinc-900 bg-zinc-905 flex items-center justify-between">
+              <div className="p-6 border-b border-zinc-800/60 bg-gradient-to-r from-zinc-900/80 to-zinc-950 flex items-center justify-between">
                 <div>
-                  <span className="font-mono text-[9px] uppercase tracking-widest text-gold-400 font-bold block mb-1">MUDALVAR WORKSPACE COMMAND</span>
-                  <h3 className="font-display text-xl font-bold text-white tracking-tight leading-none">
-                    {editingId ? 'Modify Specification Blueprint' : 'Deploy Unique Poster Specification'}
+                  <span className="font-mono text-[9px] uppercase tracking-widest text-amber-400 font-bold block mb-1">MUDALVAR WORKSPACE COMMAND</span>
+                  <h3 className="font-bold text-xl text-white tracking-tight leading-none">
+                    {editingId ? 'Modify Specification Blueprint' : 'Deploy New Poster Specification'}
                   </h3>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => setIsModalOpen(false)}
-                  className="p-1 px-2 border border-zinc-850 hover:border-zinc-700 bg-zinc-900 hover:text-white text-zinc-550 rounded-lg transition-all font-mono text-[9px]"
-                >
-                  Close (ESC)
+                <button type="button" onClick={() => setIsModalOpen(false)} className="p-2 px-3 border border-zinc-700/60 hover:border-zinc-600 bg-zinc-900/80 hover:text-white text-zinc-400 rounded-xl transition-all font-mono text-[9px] cursor-pointer flex items-center gap-1.5">
+                  <X className="w-3.5 h-3.5" /> Close
                 </button>
               </div>
 
@@ -2125,7 +2265,7 @@ export default function CrmPanel({
                           align,
                           geometricElement,
                           category: category as any,
-                          keywords: keywordsString.split(',').map(k => k.trim()).filter(k => k.length > 0),
+                          keywords: (keywordsString || '').split(',').map(k => k.trim()).filter(k => k.length > 0),
                           badge: badge.trim(),
                           status: 'Live', // Force Live so it bypasses approval filtering during simulation
                           archived: false
@@ -2235,6 +2375,28 @@ export default function CrmPanel({
                     {/* Basic details */}
                     <div className="md:col-span-7 bg-zinc-900/10 border border-zinc-900 rounded-2xl p-5 md:p-6 space-y-4">
                       
+                      <div className="flex flex-col sm:flex-row gap-4 items-end bg-amber-950/10 border border-amber-500/20 p-4 rounded-xl mb-4">
+                        <div className="flex-1 w-full">
+                          <label className="text-[9px] font-mono text-amber-400 uppercase block mb-1 font-bold flex items-center gap-1.5"><Sparkles className="w-3 h-3"/> Brand Name (AI Assist)</label>
+                          <input
+                            type="text"
+                            placeholder="e.g. Nike, Tesla, Creativenode..."
+                            value={brandName}
+                            onChange={(e) => setBrandName(e.target.value)}
+                            className="w-full bg-zinc-950 border border-amber-900/50 rounded-xl px-4 py-2 text-xs text-white placeholder-zinc-650 focus:outline-none focus:border-amber-500 transition font-mono"
+                          />
+                        </div>
+                        <button
+                          type="button"
+                          onClick={handleGenerateAIContent}
+                          disabled={isGenerating || !brandName.trim()}
+                          className="w-full sm:w-auto px-4 py-2 bg-gradient-to-r from-amber-500 to-yellow-400 hover:from-amber-400 hover:to-yellow-300 text-black font-extrabold rounded-xl transition-all active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-xs"
+                        >
+                          {isGenerating ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />}
+                          {isGenerating ? "Generating..." : "Auto-Generate with AI"}
+                        </button>
+                      </div>
+
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
                           <label className="text-[9px] font-mono text-zinc-500 uppercase block mb-1">Primary Artwork Title *</label>
@@ -2454,7 +2616,9 @@ export default function CrmPanel({
                                             const formData = new FormData();
                                             formData.append('file', blob, file.name);
                                             const uploadRes = await fetch('/api/upload', { method: 'POST', body: formData });
-                                            const uploadJson = await uploadRes.json();
+                                            const uploadText = await uploadRes.text();
+                                            let uploadJson: any = {};
+                                            try { uploadJson = uploadText ? JSON.parse(uploadText) : {}; } catch (e) {}
                                             if (uploadJson.status === 'success') {
                                               setBgValue(uploadJson.url);
                                               triggerToast("Background asset successfully uploaded & bound!", "success");
@@ -2585,11 +2749,10 @@ export default function CrmPanel({
                       <div className="pt-2">
                         <button
                           type="submit"
-                          onClick={handleSubmit}
-                          className="w-full bg-gold-400 hover:bg-gold-500 text-black text-xs font-mono font-extrabold py-3 px-4 rounded-xl flex items-center justify-center gap-1.5 transition active:scale-95 shadow-md shadow-gold-500/10 cursor-pointer"
+                          className="w-full bg-gradient-to-r from-amber-500 to-yellow-400 hover:from-amber-400 hover:to-yellow-300 text-black text-xs font-mono font-extrabold py-3.5 px-4 rounded-xl flex items-center justify-center gap-2 transition-all active:scale-[0.98] shadow-lg shadow-amber-500/20 cursor-pointer"
                         >
                           <Save className="w-4 h-4" />
-                          <span>{editingId ? 'COMMIT LIVE DEPLOY' : 'DEPLOY SPECIFICATIONS'}</span>
+                          <span>{editingId ? 'COMMIT CHANGES' : 'DEPLOY POSTER'}</span>
                         </button>
                       </div>
 
@@ -3228,7 +3391,10 @@ export default function CrmPanel({
                   <h4 className="text-white font-bold text-xl flex items-center gap-2">
                     <Database className="w-5 h-5 text-indigo-400" /> Managed Clients
                   </h4>
-                  <span className="bg-indigo-500/20 text-indigo-300 text-xs px-3 py-1 rounded-full font-mono">{neonData.clients.length} Total</span>
+                  <div className="flex gap-2 items-center">
+                    <button onClick={() => setIsClientModalOpen(true)} className="bg-indigo-500 hover:bg-indigo-600 text-white text-xs px-3 py-1.5 rounded-lg transition font-bold">+ New Client</button>
+                    <span className="bg-indigo-500/20 text-indigo-300 text-xs px-3 py-1 rounded-full font-mono">{neonData.clients.length} Total</span>
+                  </div>
                 </div>
                 <div className="overflow-x-auto">
                   <table className="w-full text-left text-sm text-zinc-400 font-sans">
@@ -3237,7 +3403,8 @@ export default function CrmPanel({
                         <th className="py-3 px-4 rounded-tl-xl">ID</th>
                         <th className="py-3 px-4">Client Name & Tagline</th>
                         <th className="py-3 px-4">Project Slug</th>
-                        <th className="py-3 px-4 rounded-tr-xl">Sort Rank</th>
+                        <th className="py-3 px-4">Sort Rank</th>
+                        <th className="py-3 px-4 rounded-tr-xl"></th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-zinc-900/80">
@@ -3250,6 +3417,11 @@ export default function CrmPanel({
                             <span className="px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider" style={{ color: client.accent, backgroundColor: `${client.accent}20`, borderColor: `${client.accent}40`, borderWidth: '1px' }}>
                               #{client.sort_order}
                             </span>
+                          </td>
+                          <td className="py-3 px-4 text-right">
+                            <button onClick={() => handleClientDelete(client.id)} className="text-red-400 hover:text-red-300">
+                              <Trash2 className="w-4 h-4" />
+                            </button>
                           </td>
                         </tr>
                       ))}
@@ -3267,7 +3439,10 @@ export default function CrmPanel({
                     <h4 className="text-white font-bold text-lg flex items-center gap-2">
                       <LayoutGrid className="w-4 h-4 text-rose-400" /> Campaign Posters
                     </h4>
-                    <span className="text-rose-400 font-mono text-xs">{neonData.posterDesigns.length} Active</span>
+                    <div className="flex gap-2 items-center">
+                      <button onClick={() => setIsPosterModalOpen(true)} className="bg-rose-500 hover:bg-rose-600 text-white text-xs px-3 py-1.5 rounded-lg transition font-bold">+ New Poster</button>
+                      <span className="text-rose-400 font-mono text-xs">{neonData.posterDesigns.length} Active</span>
+                    </div>
                   </div>
                   <div className="space-y-3">
                     {neonData.posterDesigns.map(poster => (
@@ -3276,7 +3451,10 @@ export default function CrmPanel({
                           <p className="text-sm font-bold text-zinc-200 truncate">{poster.title}</p>
                           <p className="text-[10px] text-zinc-500 font-mono tracking-widest mt-1 truncate">Path: {poster.image_path}</p>
                         </div>
-                        <span className="text-[10px] font-mono bg-zinc-950 px-2.5 py-1 rounded-md text-zinc-400 border border-zinc-800 tracking-wider uppercase ml-4 shrink-0">Order: {poster.sort_order}</span>
+                        <div className="flex items-center ml-4 shrink-0">
+                          <span className="text-[10px] font-mono bg-zinc-950 px-2.5 py-1 rounded-md text-zinc-400 border border-zinc-800 tracking-wider uppercase">Order: {poster.sort_order}</span>
+                          <button onClick={() => handleClientPosterDelete(poster.id)} className="text-red-400 hover:text-red-300 ml-4"><Trash2 className="w-4 h-4" /></button>
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -3288,7 +3466,10 @@ export default function CrmPanel({
                     <h4 className="text-white font-bold text-lg flex items-center gap-2">
                       <ExternalLink className="w-4 h-4 text-sky-400" /> Web Deployments
                     </h4>
-                    <span className="text-sky-400 font-mono text-xs">{neonData.websites.length} Live</span>
+                    <div className="flex gap-2 items-center">
+                      <button onClick={() => setIsWebsiteModalOpen(true)} className="bg-sky-500 hover:bg-sky-600 text-white text-xs px-3 py-1.5 rounded-lg transition font-bold">+ New Site</button>
+                      <span className="text-sky-400 font-mono text-xs">{neonData.websites.length} Live</span>
+                    </div>
                   </div>
                   <div className="space-y-3">
                     {neonData.websites.map(site => (
@@ -3297,14 +3478,129 @@ export default function CrmPanel({
                           <p className="text-sm font-bold text-zinc-200 truncate">{site.title}</p>
                           <p className="text-[10px] text-zinc-500 font-mono tracking-widest mt-1 truncate">Path: {site.image_path}</p>
                         </div>
-                        <span className={`text-[10px] font-mono px-2.5 py-1 rounded-md border tracking-wider uppercase shrink-0 ml-4 ${site.approved ? 'bg-sky-500/10 text-sky-400 border-sky-500/20' : 'bg-zinc-950 text-zinc-400 border-zinc-800'}`}>
-                          {site.approved ? 'Approved' : 'Pending'}
-                        </span>
+                        <div className="flex items-center ml-4 shrink-0">
+                          <span className={`text-[10px] font-mono px-2.5 py-1 rounded-md border tracking-wider uppercase ${site.approved ? 'bg-sky-500/10 text-sky-400 border-sky-500/20' : 'bg-zinc-950 text-zinc-400 border-zinc-800'}`}>
+                            {site.approved ? 'Approved' : 'Pending'}
+                          </span>
+                          <button onClick={() => handleWebsiteDelete(site.id)} className="text-red-400 hover:text-red-300 ml-4"><Trash2 className="w-4 h-4" /></button>
+                        </div>
                       </div>
                     ))}
                   </div>
                 </div>
 
+              </div>
+            </div>
+          )}
+
+          {/* CRM Forms Modals */}
+          {isClientModalOpen && (
+            <div className="fixed inset-0 z-[100] bg-black/90 flex items-center justify-center p-4">
+              <div className="bg-zinc-950 border border-zinc-900 rounded-2xl w-full max-w-md p-6">
+                <h3 className="text-xl font-bold text-white mb-4">Add Client</h3>
+                <form onSubmit={handleClientFormSubmit} className="space-y-4">
+                  <div>
+                    <label className="text-xs text-zinc-400 mb-1 block">Client Name</label>
+                    <input required type="text" className="w-full bg-zinc-900 border border-zinc-800 rounded p-2 text-white" value={clientForm.name} onChange={e => setClientForm({...clientForm, name: e.target.value})} />
+                  </div>
+                  <div>
+                    <label className="text-xs text-zinc-400 mb-1 block">Slug</label>
+                    <input required type="text" className="w-full bg-zinc-900 border border-zinc-800 rounded p-2 text-white" value={clientForm.slug} onChange={e => setClientForm({...clientForm, slug: e.target.value})} />
+                  </div>
+                  <div>
+                    <label className="text-xs text-zinc-400 mb-1 block">Tagline</label>
+                    <input type="text" className="w-full bg-zinc-900 border border-zinc-800 rounded p-2 text-white" value={clientForm.tagline} onChange={e => setClientForm({...clientForm, tagline: e.target.value})} />
+                  </div>
+                  <div className="flex gap-4">
+                    <div className="flex-1">
+                      <label className="text-xs text-zinc-400 mb-1 block">Accent</label>
+                      <input type="color" className="w-full h-10 rounded" value={clientForm.accent} onChange={e => setClientForm({...clientForm, accent: e.target.value})} />
+                    </div>
+                    <div className="flex-1">
+                      <label className="text-xs text-zinc-400 mb-1 block">Sort Order</label>
+                      <input type="number" className="w-full bg-zinc-900 border border-zinc-800 rounded p-2 text-white" value={clientForm.sort_order} onChange={e => setClientForm({...clientForm, sort_order: parseInt(e.target.value) || 0})} />
+                    </div>
+                  </div>
+                  <div className="flex gap-2 pt-4">
+                    <button type="button" onClick={() => setIsClientModalOpen(false)} className="flex-1 bg-zinc-900 text-white rounded p-2 hover:bg-zinc-800">Cancel</button>
+                    <button type="submit" className="flex-1 bg-indigo-500 text-white rounded p-2 hover:bg-indigo-600 font-bold">Save Client</button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
+
+          {isPosterModalOpen && (
+            <div className="fixed inset-0 z-[100] bg-black/90 flex items-center justify-center p-4">
+              <div className="bg-zinc-950 border border-zinc-900 rounded-2xl w-full max-w-md p-6">
+                <h3 className="text-xl font-bold text-white mb-4">Add Poster</h3>
+                <form onSubmit={handleClientPosterSubmit} className="space-y-4">
+                  <div>
+                    <label className="text-xs text-zinc-400 mb-1 block">Client</label>
+                    <select required className="w-full bg-zinc-900 border border-zinc-800 rounded p-2 text-white" value={clientPosterForm.client_id} onChange={e => setClientPosterForm({...clientPosterForm, client_id: e.target.value})}>
+                      <option value="">Select a client...</option>
+                      {neonData.clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-xs text-zinc-400 mb-1 block">Title</label>
+                    <input required type="text" className="w-full bg-zinc-900 border border-zinc-800 rounded p-2 text-white" value={clientPosterForm.title} onChange={e => setClientPosterForm({...clientPosterForm, title: e.target.value})} />
+                  </div>
+                  <div>
+                    <label className="text-xs text-zinc-400 mb-1 block">Image URL / Path</label>
+                    <input required type="text" className="w-full bg-zinc-900 border border-zinc-800 rounded p-2 text-white" value={clientPosterForm.image_path} onChange={e => setClientPosterForm({...clientPosterForm, image_path: e.target.value})} />
+                  </div>
+                  <div>
+                    <label className="text-xs text-zinc-400 mb-1 block">Sort Order</label>
+                    <input type="number" className="w-full bg-zinc-900 border border-zinc-800 rounded p-2 text-white" value={clientPosterForm.sort_order} onChange={e => setClientPosterForm({...clientPosterForm, sort_order: parseInt(e.target.value) || 0})} />
+                  </div>
+                  <div className="flex gap-2 pt-4">
+                    <button type="button" onClick={() => setIsPosterModalOpen(false)} className="flex-1 bg-zinc-900 text-white rounded p-2 hover:bg-zinc-800">Cancel</button>
+                    <button type="submit" className="flex-1 bg-rose-500 text-white rounded p-2 hover:bg-rose-600 font-bold">Save Poster</button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
+
+          {isWebsiteModalOpen && (
+            <div className="fixed inset-0 z-[100] bg-black/90 flex items-center justify-center p-4">
+              <div className="bg-zinc-950 border border-zinc-900 rounded-2xl w-full max-w-md p-6">
+                <h3 className="text-xl font-bold text-white mb-4">Add Website</h3>
+                <form onSubmit={handleWebsiteSubmit} className="space-y-4">
+                  <div>
+                    <label className="text-xs text-zinc-400 mb-1 block">Client</label>
+                    <select required className="w-full bg-zinc-900 border border-zinc-800 rounded p-2 text-white" value={websiteForm.client_id} onChange={e => setWebsiteForm({...websiteForm, client_id: e.target.value})}>
+                      <option value="">Select a client...</option>
+                      {neonData.clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-xs text-zinc-400 mb-1 block">Title / URL</label>
+                    <input required type="text" className="w-full bg-zinc-900 border border-zinc-800 rounded p-2 text-white" value={websiteForm.title} onChange={e => setWebsiteForm({...websiteForm, title: e.target.value})} />
+                  </div>
+                  <div>
+                    <label className="text-xs text-zinc-400 mb-1 block">Thumbnail URL / Path</label>
+                    <input required type="text" className="w-full bg-zinc-900 border border-zinc-800 rounded p-2 text-white" value={websiteForm.image_path} onChange={e => setWebsiteForm({...websiteForm, image_path: e.target.value})} />
+                  </div>
+                  <div className="flex gap-4">
+                    <div className="flex-1">
+                      <label className="text-xs text-zinc-400 mb-1 block">Approved</label>
+                      <select className="w-full bg-zinc-900 border border-zinc-800 rounded p-2 text-white" value={websiteForm.approved ? 'true' : 'false'} onChange={e => setWebsiteForm({...websiteForm, approved: e.target.value === 'true'})}>
+                        <option value="true">Yes</option>
+                        <option value="false">No</option>
+                      </select>
+                    </div>
+                    <div className="flex-1">
+                      <label className="text-xs text-zinc-400 mb-1 block">Sort Order</label>
+                      <input type="number" className="w-full bg-zinc-900 border border-zinc-800 rounded p-2 text-white" value={websiteForm.sort_order} onChange={e => setWebsiteForm({...websiteForm, sort_order: parseInt(e.target.value) || 0})} />
+                    </div>
+                  </div>
+                  <div className="flex gap-2 pt-4">
+                    <button type="button" onClick={() => setIsWebsiteModalOpen(false)} className="flex-1 bg-zinc-900 text-white rounded p-2 hover:bg-zinc-800">Cancel</button>
+                    <button type="submit" className="flex-1 bg-sky-500 text-white rounded p-2 hover:bg-sky-600 font-bold">Save Website</button>
+                  </div>
+                </form>
               </div>
             </div>
           )}

@@ -23,30 +23,47 @@ const pool = new Pool({
 
 // Uploads are handled entirely via AWS S3 in production
 
-// Multer config for AWS S3 storage
-const s3 = new AWS.S3({
-  accessKeyId: process.env.AWS_ACCESS_KEY_ID,
-  secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
-  region: process.env.AWS_REGION,
-});
+// Multer config for AWS S3 storage (fallback to Neon Database memory storage if no credentials)
+let upload: multer.Multer;
+const hasAwsCreds = 
+  process.env.AWS_ACCESS_KEY_ID && 
+  process.env.AWS_ACCESS_KEY_ID !== 'your-key' &&
+  !process.env.AWS_ACCESS_KEY_ID.includes('your-') &&
+  process.env.AWS_SECRET_ACCESS_KEY && 
+  process.env.AWS_SECRET_ACCESS_KEY !== 'your-secret' &&
+  !process.env.AWS_SECRET_ACCESS_KEY.includes('your-');
 
-const upload = multer({
-  storage: multerS3({
-    s3: s3,
-    bucket: process.env.S3_ACCESS_POINT_ALIAS || process.env.S3_BUCKET_NAME || 'creativenode-uploads',
-    metadata: (req, file, cb) => {
-      cb(null, { fieldName: file.fieldname });
-    },
-    key: (req, file, cb) => {
-      const safeName = file.originalname.replace(/[^a-zA-Z0-9._-]/g, '_');
-      const uniqueName = `${Date.now()}_${safeName}`;
-      cb(null, uniqueName);
-    },
-    contentType: multerS3.autoContentType,
-    acl: 'public-read'
-  }),
-  limits: { fileSize: 10 * 1024 * 1024 } // 10MB max
-});
+if (hasAwsCreds) {
+  const s3 = new AWS.S3({
+    accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
+    region: process.env.AWS_REGION,
+  });
+
+  upload = multer({
+    storage: multerS3({
+      s3: s3,
+      bucket: process.env.S3_ACCESS_POINT_ALIAS || process.env.S3_BUCKET_NAME || 'creativenode-uploads',
+      metadata: (req, file, cb) => {
+        cb(null, { fieldName: file.fieldname });
+      },
+      key: (req, file, cb) => {
+        const safeName = file.originalname.replace(/[^a-zA-Z0-9._-]/g, '_');
+        const uniqueName = `${Date.now()}_${safeName}`;
+        cb(null, uniqueName);
+      },
+      contentType: multerS3.autoContentType,
+      acl: 'public-read'
+    }),
+    limits: { fileSize: 10 * 1024 * 1024 } // 10MB max
+  });
+} else {
+  // If S3 keys are not provided or are dummy values, upload directly to memory and store in Neon DB
+  upload = multer({
+    storage: multer.memoryStorage(),
+    limits: { fileSize: 10 * 1024 * 1024 } // 10MB max
+  });
+}
 
 // Initialize Neon tables on startup
 async function initDB() {
@@ -99,8 +116,39 @@ async function initDB() {
         admin_email TEXT NOT NULL,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
+      CREATE TABLE IF NOT EXISTS clients (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        slug TEXT NOT NULL,
+        tagline TEXT,
+        accent TEXT,
+        sort_order INTEGER DEFAULT 0,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+      CREATE TABLE IF NOT EXISTS client_posters (
+        id TEXT PRIMARY KEY,
+        client_id TEXT NOT NULL,
+        title TEXT NOT NULL,
+        image_path TEXT NOT NULL,
+        sort_order INTEGER DEFAULT 0,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+      CREATE TABLE IF NOT EXISTS client_websites (
+        id TEXT PRIMARY KEY,
+        client_id TEXT NOT NULL,
+        title TEXT NOT NULL,
+        image_path TEXT NOT NULL,
+        approved BOOLEAN DEFAULT true,
+        sort_order INTEGER DEFAULT 0,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
     `);
     console.log("[Neon DB] Tables initialized successfully.");
+    
+    // Add file_data column to support Neon DB binary uploads when S3 is not available
+    await client.query(`
+      ALTER TABLE uploaded_files ADD COLUMN IF NOT EXISTS file_data BYTEA;
+    `);
   } catch (err) {
     console.error("[Neon DB] Table init failed:", err);
   } finally {
@@ -126,36 +174,69 @@ app.use(async (req, res, next) => {
 app.use(cors());
 app.use(express.json({ limit: '50mb' }));
 
-  // Serve uploaded images as static files
-  // app.use("/uploads", express.static(UPLOADS_DIR)); // Disabled after migrating to S3
+  // Serve uploaded images directly from Neon DB (or fallback to static uploads folder)
+  app.get("/uploads/:id", async (req, res) => {
+    const { id } = req.params;
+    try {
+      const client = await pool.connect();
+      const result = await client.query('SELECT file_data, content_type FROM uploaded_files WHERE id = $1 OR s3_key = $1', [id]);
+      client.release();
+
+      if (result.rows.length === 0 || !result.rows[0].file_data) {
+        // Fallback: check if local file exists on disk
+        const filePath = path.join(process.cwd(), "uploads", id);
+        if (fs.existsSync(filePath)) {
+          return res.sendFile(filePath);
+        }
+        return res.status(404).send("File not found");
+      }
+
+      const file = result.rows[0];
+      res.setHeader("Content-Type", file.content_type || "image/jpeg");
+      res.send(file.file_data);
+    } catch (err) {
+      console.error("Failed to serve file from DB:", err);
+      res.status(500).send("Error retrieving file");
+    }
+  });
+
+  // Serve static uploads if they exist locally on disk as legacy fallback
+  app.use("/uploads-local", express.static(path.join(process.cwd(), "uploads")));
 
   // ─── IMAGE UPLOAD ENDPOINT ───────────────────────────────────────────────
   app.post("/api/upload", upload.single("file"), async (req, res) => {
     if (!req.file) {
       return res.status(400).json({ status: "error", message: "No file provided." });
     }
-    // S3 URL is provided by multer-s3 in the file.location property
-    const url = (req.file as any).location;
-    // Record upload metadata in the uploaded_files table
+    
+    const fileId = `file-${Date.now()}`;
+    const isS3 = (req.file as any).location !== undefined;
+    const url = isS3 ? (req.file as any).location : `/uploads/${fileId}`;
+    const key = isS3 ? (req.file as any).key : fileId;
+
+    // Record upload metadata (and binary data if S3 is inactive) in Neon PostgreSQL
     try {
       const client = await pool.connect();
       await client.query(
-        `INSERT INTO uploaded_files (id, s3_key, original_name, content_type, size, uploaded_by) VALUES ($1, $2, $3, $4, $5, $6)`,
+        `INSERT INTO uploaded_files (id, s3_key, original_name, content_type, size, uploaded_by, file_data) 
+         VALUES ($1, $2, $3, $4, $5, $6, $7)`,
         [
-          `file-${Date.now()}`,
-          (req.file as any).key,
+          fileId,
+          key,
           req.file.originalname,
           req.file.mimetype,
           req.file.size,
           // Assuming a simple auth context – replace with actual user ID if available
           (req as any).user?.uid || null,
+          isS3 ? null : req.file.buffer // Store buffer directly in Neon if not S3
         ]
       );
       client.release();
-    } catch (e) {
-      console.error('Failed to record uploaded file:', e);
+      res.json({ status: "success", url });
+    } catch (err) {
+      console.error("DB insert error for upload:", err);
+      res.status(500).json({ status: "error", message: "Failed to save file metadata to Database." });
     }
-    res.json({ status: "success", url });
   });
 
   // ─── DATABASE STATUS ─────────────────────────────────────────────────────
@@ -391,6 +472,92 @@ app.use(express.json({ limit: '50mb' }));
     }
   });
 
+  app.post("/api/db/clients", async (req, res) => {
+    const { id, name, slug, tagline, accent, sort_order } = req.body;
+    try {
+      const client = await pool.connect();
+      await client.query(
+        `INSERT INTO clients (id, name, slug, tagline, accent, sort_order) VALUES ($1, $2, $3, $4, $5, $6)
+         ON CONFLICT (id) DO UPDATE SET name = $2, slug = $3, tagline = $4, accent = $5, sort_order = $6`,
+        [id, name, slug, tagline, accent, sort_order || 0]
+      );
+      client.release();
+      res.json({ status: "success", message: "Client saved." });
+    } catch (err) {
+      res.status(500).json({ status: "error", message: "Failed to save client", error: (err as any).message });
+    }
+  });
+
+  app.delete("/api/db/clients/:id", async (req, res) => {
+    const { id } = req.params;
+    try {
+      const client = await pool.connect();
+      await client.query('DELETE FROM clients WHERE id = $1', [id]);
+      await client.query('DELETE FROM client_posters WHERE client_id = $1', [id]);
+      await client.query('DELETE FROM client_websites WHERE client_id = $1', [id]);
+      client.release();
+      res.json({ status: "success", message: "Client deleted." });
+    } catch (err) {
+      res.status(500).json({ status: "error", message: "Failed to delete client", error: (err as any).message });
+    }
+  });
+
+  app.post("/api/db/client-posters", async (req, res) => {
+    const { id, client_id, title, image_path, sort_order } = req.body;
+    try {
+      const client = await pool.connect();
+      await client.query(
+        `INSERT INTO client_posters (id, client_id, title, image_path, sort_order) VALUES ($1, $2, $3, $4, $5)
+         ON CONFLICT (id) DO UPDATE SET title = $3, image_path = $4, sort_order = $5`,
+        [id, client_id, title, image_path, sort_order || 0]
+      );
+      client.release();
+      res.json({ status: "success", message: "Poster saved." });
+    } catch (err) {
+      res.status(500).json({ status: "error", message: "Failed to save poster", error: (err as any).message });
+    }
+  });
+
+  app.delete("/api/db/client-posters/:id", async (req, res) => {
+    const { id } = req.params;
+    try {
+      const client = await pool.connect();
+      await client.query('DELETE FROM client_posters WHERE id = $1', [id]);
+      client.release();
+      res.json({ status: "success", message: "Poster deleted." });
+    } catch (err) {
+      res.status(500).json({ status: "error", message: "Failed to delete poster", error: (err as any).message });
+    }
+  });
+
+  app.post("/api/db/client-websites", async (req, res) => {
+    const { id, client_id, title, image_path, approved, sort_order } = req.body;
+    try {
+      const client = await pool.connect();
+      await client.query(
+        `INSERT INTO client_websites (id, client_id, title, image_path, approved, sort_order) VALUES ($1, $2, $3, $4, $5, $6)
+         ON CONFLICT (id) DO UPDATE SET title = $3, image_path = $4, approved = $5, sort_order = $6`,
+        [id, client_id, title, image_path, approved ?? true, sort_order || 0]
+      );
+      client.release();
+      res.json({ status: "success", message: "Website saved." });
+    } catch (err) {
+      res.status(500).json({ status: "error", message: "Failed to save website", error: (err as any).message });
+    }
+  });
+
+  app.delete("/api/db/client-websites/:id", async (req, res) => {
+    const { id } = req.params;
+    try {
+      const client = await pool.connect();
+      await client.query('DELETE FROM client_websites WHERE id = $1', [id]);
+      client.release();
+      res.json({ status: "success", message: "Website deleted." });
+    } catch (err) {
+      res.status(500).json({ status: "error", message: "Failed to delete website", error: (err as any).message });
+    }
+  });
+
   // ─── INSPIRATION FALLBACK DATA ────────────────────────────────────────────
   const FALLBACK_INSPIRATION = [
     { headline: "CHROME REACTIONISM", trend: "Saturated liquid metallic elements positioned off-center against heavy high-contrast black grids.", visualReference: "High-grain dark concrete surfaces overlaid with metallic warp lines.", dominantColor: "#00F0FF", fontSuggestion: "JetBrains Mono" },
@@ -431,6 +598,60 @@ app.use(express.json({ limit: '50mb' }));
       throw new Error("Empty response");
     } catch (err) {
       return res.json({ trends: FALLBACK_INSPIRATION, error: (err as any).message, source: "fallback" });
+    }
+  });
+
+  // ─── AI POSTER CONTENT GENERATION ──────────────────────────────────────────
+  app.post("/api/generate-poster-content", async (req, res) => {
+    const { brandName } = req.body;
+    const apiKey = process.env.GEMINI_API_KEY;
+
+    if (!brandName) {
+      return res.status(400).json({ error: "Brand name is required" });
+    }
+
+    if (!apiKey) {
+      // Fallback if no API key is provided
+      return res.json({
+        title: `${brandName} Collection`,
+        subtitle: "Premium Standard Edition",
+        details: `Exclusive new specifications for ${brandName}. Featuring modern design principles and structural aesthetics.`,
+      });
+    }
+
+    try {
+      const ai = new GoogleGenAI({ apiKey, httpOptions: { headers: { "User-Agent": "aistudio-build" } } });
+      const prompt = `Generate highly engaging, premium advertising poster copy for a brand named "${brandName}". Provide a short catchy Title, a Subtitle, and a 1-2 sentence Details description.`;
+
+      const response = await ai.models.generateContent({
+        model: "gemini-2.5-flash",
+        contents: prompt,
+        config: {
+          systemInstruction: "You are an elite editorial poster design copywriter. Keep it premium, concise, and impactful.",
+          responseMimeType: "application/json",
+          responseSchema: {
+            type: Type.OBJECT,
+            properties: {
+              title: { type: Type.STRING },
+              subtitle: { type: Type.STRING },
+              details: { type: Type.STRING }
+            },
+            required: ["title", "subtitle", "details"]
+          }
+        }
+      });
+      if (response.text) {
+        return res.json(JSON.parse(response.text.trim()));
+      }
+      throw new Error("Empty response");
+    } catch (err) {
+      console.error("AI Generation Error:", err);
+      // Fallback on error
+      return res.json({
+        title: `${brandName} Exclusive`,
+        subtitle: "The New Standard",
+        details: `Experience the latest design evolution from ${brandName}. Modernism redefined.`,
+      });
     }
   });
 

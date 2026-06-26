@@ -5,6 +5,7 @@ export interface LocalUser {
   email: string | null;
   displayName: string | null;
   photoURL: string | null;
+  is_admin: boolean;
 }
 
 // Temporary global variable to hold the current user session
@@ -36,7 +37,9 @@ export const auth = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, password })
     });
-    const data = await res.json();
+    const text = await res.text();
+    let data: any = {};
+    try { data = text ? JSON.parse(text) : {}; } catch (e) {}
     if (data.status === 'success') {
       _currentUser = data.user;
       localStorage.setItem('creativenode_auth_user', JSON.stringify(_currentUser));
@@ -53,7 +56,9 @@ export const auth = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, displayName, password })
     });
-    const data = await res.json();
+    const text = await res.text();
+    let data: any = {};
+    try { data = text ? JSON.parse(text) : {}; } catch (e) {}
     if (data.status === 'success') {
       _currentUser = data.user;
       localStorage.setItem('creativenode_auth_user', JSON.stringify(_currentUser));
@@ -70,7 +75,9 @@ export const auth = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ credential })
     });
-    const data = await res.json();
+    const text = await res.text();
+    let data: any = {};
+    try { data = text ? JSON.parse(text) : {}; } catch (e) {}
     if (data.status === 'success') {
       _currentUser = data.user;
       localStorage.setItem('creativenode_auth_user', JSON.stringify(_currentUser));
