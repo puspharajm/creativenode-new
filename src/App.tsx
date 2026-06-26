@@ -256,12 +256,12 @@ function HeroTranslatedContent() {
         </span>
       </h1>
 
-      <p className="font-sans text-sm leading-relaxed text-zinc-400 max-w-xl mx-auto">
+      <p className="font-sans text-sm leading-relaxed text-zinc-400 max-w-xl mx-auto lg:mx-0">
         {t('hero_body')}
       </p>
 
       {/* Statistics Row */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 py-6 border-y border-zinc-900 max-w-lg mx-auto">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 py-6 border-y border-zinc-900 max-w-lg mx-auto lg:mx-0">
         <div>
           <span className="font-outfit text-xl sm:text-2xl lg:text-3xl font-extrabold text-gold-400 block">2,400+</span>
           <span className="font-mono text-[9px] text-zinc-500 tracking-wider uppercase block">{t('hero_stat_1_label')}</span>
@@ -4524,302 +4524,8 @@ export default function App() {
                         </div>
                       </div>
 
-                      {/* PRINT COST ESTIMATOR UTILITY CARD */}
-                      <div className="border-t border-zinc-900 pt-6 mt-6">
-                        <div className="bg-zinc-900/30 border border-zinc-900 rounded-xl p-4">
-                          <div className="flex items-center justify-between mb-3.5">
-                            <div className="flex items-center gap-1 w-full relative">
-                              <Printer className="w-3.5 h-3.5 text-indigo-400" />
-                              <span className="font-mono text-[9px] text-zinc-400 uppercase tracking-widest font-bold">Print Cost Estimator</span>
-                              
-                              {/* Help Icon Tooltip Trigger */}
-                              <div className="relative inline-flex items-center ml-0.5">
-                                <button
-                                  type="button"
-                                  onClick={() => setShowQualityHelp(!showQualityHelp)}
-                                  onMouseEnter={() => setShowQualityHelp(true)}
-                                  onMouseLeave={() => setShowQualityHelp(false)}
-                                  className="p-1 text-zinc-550 hover:text-indigo-400 transition cursor-pointer flex items-center justify-center rounded-full hover:bg-zinc-800/40"
-                                  title="Explain Paper Qualities"
-                                >
-                                  <HelpCircle className="w-3 h-3" />
-                                </button>
-                                
-                                {showQualityHelp && (
-                                  <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-64 p-3 bg-zinc-950 border border-zinc-800 rounded-lg shadow-xl z-50 text-left">
-                                    <div className="text-[10px] font-mono leading-relaxed space-y-2.5 text-zinc-300">
-                                      <div>
-                                        <span className="text-zinc-100 font-bold uppercase tracking-wider block text-[9px] text-indigo-400">Standard Quality</span>
-                                        <span className="text-[9px] text-zinc-400">180gsm matte fine-art stock. Crisp lines, natural texture, standard long-lasting ink.</span>
-                                      </div>
-                                      <div className="border-t border-zinc-900 pt-2">
-                                        <span className="text-zinc-100 font-bold uppercase tracking-wider block text-[9px] text-indigo-400">Premium Quality</span>
-                                        <span className="text-[9px] text-zinc-400">240gsm high-density heavy stock. Enhanced black saturation, velvet smooth touch.</span>
-                                      </div>
-                                      <div className="border-t border-zinc-900 pt-2">
-                                        <span className="text-zinc-100 font-bold uppercase tracking-wider block text-[9px] text-indigo-400">Collector Quality</span>
-                                        <span className="text-[9px] text-zinc-400">310gsm museum 100% cotton-rag archival. Lifetime certified fade resistance.</span>
-                                      </div>
-                                    </div>
-                                    <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-1 border-x-4 border-x-transparent border-t-4 border-t-zinc-950" />
-                                  </div>
-                                )}
-                              </div>
-                            </div>
-
-                            {/* Reset Estimator and Show Print Preview togglers */}
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setEstimatorSize('A3');
-                                setEstimatorQuality('premium');
-                                triggerToast("Estimator options reset to defaults (A3, Premium).", "info");
-                              }}
-                              className="text-[8px] font-mono text-zinc-500 hover:text-indigo-400 font-bold uppercase tracking-widest cursor-pointer transition select-none flex items-center gap-1 shrink-0"
-                              title="Reset all selections"
-                            >
-                              <RefreshCw className="w-2.5 h-2.5" />
-                              <span>Reset</span>
-                            </button>
-                          </div>
-
-                           <div className="space-y-3 font-mono text-[10px]">
-                            <div>
-                              <div className="flex items-center gap-1 mb-1 relative">
-                                <label className="text-zinc-500 uppercase text-[8px] tracking-wider">Dimensions</label>
-                                <button
-                                  type="button"
-                                  onClick={() => setShowSizeTooltip(!showSizeTooltip)}
-                                  onMouseEnter={() => setShowSizeTooltip(true)}
-                                  onMouseLeave={() => setShowSizeTooltip(false)}
-                                  className="text-zinc-550 hover:text-indigo-400 cursor-pointer text-[10px] select-none font-bold outline-none leading-none flex items-center justify-center h-3.5 w-3.5 rounded-full hover:bg-zinc-800/60 transition"
-                                  title="Explain Dimension Impacts"
-                                >
-                                  ?
-                                </button>
-
-                                {showSizeTooltip && (
-                                  <div className="absolute bottom-full left-0 mb-2 w-64 p-3 bg-zinc-950 border border-zinc-800 rounded-lg shadow-xl z-50 text-left normal-case">
-                                    <div className="text-[9.5px] leading-relaxed text-zinc-300 font-mono space-y-1.5">
-                                      <div className="text-[10px] text-indigo-400 font-bold uppercase tracking-wide">Dimension Surcharges:</div>
-                                      <div><span className="text-white font-bold">A4 Size:</span> Baseline print cost. Ideal for study matrices and desk boards.</div>
-                                      <div><span className="text-white font-bold">A3 Size:</span> +$15 surcharge. Perfect physical format for modernist apartments.</div>
-                                      <div><span className="text-white font-bold">Poster Size:</span> +$35 surcharge. Dramatic oversized scale for high-end gallery showcases.</div>
-                                    </div>
-                                    <div className="absolute top-full left-3 -mt-1 border-x-4 border-x-transparent border-t-4 border-t-zinc-950" />
-                                  </div>
-                                )}
-                              </div>
-                              <div className="grid grid-cols-3 gap-1.5">
-                                {(['A4', 'A3', 'Poster'] as const).map(size => (
-                                  <button
-                                    key={size}
-                                    type="button"
-                                    onClick={() => setEstimatorSize(size)}
-                                    className={`py-1 rounded-lg text-center transition select-none cursor-pointer text-[9px] font-bold ${
-                                      estimatorSize === size 
-                                        ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/10' 
-                                        : 'bg-zinc-950 text-zinc-400 hover:text-white border border-zinc-900/40'
-                                    }`}
-                                  >
-                                    {size}
-                                  </button>
-                                ))}
-                              </div>
-                            </div>
-
-                            <div>
-                              <div className="flex items-center gap-1 mb-1 relative">
-                                <label className="text-zinc-500 uppercase text-[8px] tracking-wider">Paper Quality</label>
-                                <button
-                                  type="button"
-                                  onClick={() => setShowQualityTooltip(!showQualityTooltip)}
-                                  onMouseEnter={() => setShowQualityTooltip(true)}
-                                  onMouseLeave={() => setShowQualityTooltip(false)}
-                                  className="text-zinc-550 hover:text-indigo-400 cursor-pointer text-[10px] select-none font-bold outline-none leading-none flex items-center justify-center h-3.5 w-3.5 rounded-full hover:bg-zinc-800/60 transition"
-                                  title="Explain Paper Quality Pricing"
-                                >
-                                  ?
-                                </button>
-
-                                {showQualityTooltip && (
-                                  <div className="absolute bottom-full left-0 mb-2 w-64 p-3 bg-zinc-950 border border-zinc-805 rounded-lg shadow-xl z-50 text-left normal-case">
-                                    <div className="text-[9.5px] leading-relaxed text-zinc-300 font-mono space-y-1.5">
-                                      <div className="text-[10px] text-indigo-400 font-bold uppercase tracking-wide">Quality Price Impact:</div>
-                                      <div><span className="text-white font-bold">Standard (180gsm):</span> Standard matte paper. Base price.</div>
-                                      <div><span className="text-white font-bold">Premium (240gsm):</span> Velvet tactile touch. +15% paper surcharge.</div>
-                                      <div><span className="text-white font-bold">Collector (310gsm):</span> Lifetime 100% cotton archival stock. +35% collector surcharge.</div>
-                                    </div>
-                                    <div className="absolute top-full left-3 -mt-1 border-x-4 border-x-transparent border-t-4 border-t-zinc-950" />
-                                  </div>
-                                )}
-                              </div>
-                              <div className="grid grid-cols-3 gap-1.5">
-                                {(['standard', 'premium', 'collector'] as const).map(quality => (
-                                  <button
-                                    key={quality}
-                                    type="button"
-                                    onClick={() => setEstimatorQuality(quality)}
-                                    className={`py-1 rounded-lg text-center capitalize transition select-none cursor-pointer text-[9px] font-bold ${
-                                      estimatorQuality === quality 
-                                        ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/10' 
-                                        : 'bg-zinc-950 text-zinc-400 hover:text-white border border-zinc-900/40'
-                                    }`}
-                                  >
-                                    {quality}
-                                  </button>
-                                ))}
-                              </div>
-                            </div>
-
-                            {/* Show Print Preview toggle control */}
-                            <div className="pt-2 flex items-center justify-between border-t border-zinc-900/40">
-                              <span className="text-zinc-550 text-[8px] uppercase tracking-wider font-bold">Grid Dimensions Preview</span>
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setShowPrintPreview(!showPrintPreview);
-                                  triggerToast(showPrintPreview ? "Visual grid disabled." : "Visual grid preview enabled.", "info");
-                                }}
-                                className={`flex items-center gap-1 px-2 py-0.5 rounded text-[8px] font-mono uppercase font-bold tracking-widest transition cursor-pointer select-none border ${
-                                  showPrintPreview 
-                                    ? 'bg-indigo-950/40 text-indigo-400 border-indigo-900/60' 
-                                    : 'bg-zinc-950 text-zinc-500 border-zinc-900 hover:text-zinc-350'
-                                }`}
-                              >
-                                <Eye className="w-3 h-3" />
-                                <span>{showPrintPreview ? 'Hide Preview' : 'Show Preview'}</span>
-                              </button>
-                            </div>
-
-                            {/* Crop Marks and Bleed Area toggle */}
-                            <div className="pt-2 flex items-center justify-between border-t border-zinc-900/40">
-                              <span className="text-zinc-550 text-[8px] uppercase tracking-wider font-bold">Crop Marks & Bleed Guides</span>
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setShowCropMarks(!showCropMarks);
-                                  triggerToast(!showCropMarks ? "Printer alignment guides and trim/bleed limits activated." : "Printer crop marks hidden.", "info");
-                                }}
-                                className={`flex items-center gap-1 px-2 py-0.5 rounded text-[8px] font-mono uppercase font-bold tracking-widest transition cursor-pointer select-none border ${
-                                  showCropMarks 
-                                    ? 'bg-rose-950/40 text-rose-400 border-rose-900/60' 
-                                    : 'bg-zinc-950 text-zinc-500 border-zinc-900 hover:text-zinc-350'
-                                }`}
-                              >
-                                <Scissors className="w-3 h-3" />
-                                <span>{showCropMarks ? 'Hide Marks' : 'Show Marks'}</span>
-                              </button>
-                            </div>
-
-                            {/* Proportional Grid Overlay */}
-                            {showPrintPreview && (
-                              <div className="mt-2 bg-zinc-950/80 border border-zinc-900 rounded-xl p-3 relative overflow-hidden transition-all duration-300">
-                                <span className="text-[7.5px] font-mono text-zinc-500 uppercase tracking-widest block mb-2">PROPORTIONAL SCALE COMPARISON (GRID)</span>
-                                
-                                <div className="aspect-[16/9] bg-zinc-900/30 rounded-lg border border-zinc-900/60 relative flex items-center justify-center p-2">
-                                  {/* Outer reference container representing the wall space or maximum size */}
-                                  <div className="absolute inset-1.5 border border-dashed border-zinc-800/60 rounded flex items-center justify-center">
-                                    <span className="absolute bottom-1 right-1.5 text-[6px] font-mono text-zinc-650">Display Wall (Reference Space)</span>
-                                  </div>
-
-                                  {/* Proportional print sizes drawn on top of each other to show size ratio */}
-                                  <div className="relative w-full h-full flex items-center justify-center">
-                                    {/* Poster size boundary - larger */}
-                                    <div className={`border transition-all duration-500 rounded p-1 flex flex-col justify-between ${
-                                      estimatorSize === 'Poster' 
-                                        ? 'w-[85%] h-[90%] bg-indigo-950/25 border-indigo-500/50 z-30' 
-                                        : 'w-[85%] h-[90%] border-zinc-800/30 opacity-30 z-10'
-                                    }`}>
-                                      <span className="text-[6.5px] font-bold text-zinc-550 font-mono">Poster (24&quot; x 36&quot;)</span>
-                                      {estimatorSize === 'Poster' && <span className="text-[7px] font-mono font-bold text-center text-indigo-400 self-center">Active Target (Max Scale)</span>}
-                                    </div>
-                                    
-                                    {/* A3 size boundary - medium */}
-                                    <div className={`absolute border transition-all duration-500 rounded p-1 flex flex-col justify-between ${
-                                      estimatorSize === 'A3' 
-                                        ? 'w-[55%] h-[65%] bg-indigo-950/25 border-indigo-500/50 z-30' 
-                                        : 'w-[55%] h-[65%] border-zinc-800/30 opacity-30 z-10'
-                                    }`}>
-                                      <span className="text-[6.5px] font-bold text-zinc-550 font-mono">A3 (11.7&quot; x 16.5&quot;)</span>
-                                      {estimatorSize === 'A3' && <span className="text-[7px] font-mono font-bold text-center text-indigo-400 self-center">Active Target</span>}
-                                    </div>
-
-                                    {/* A4 size boundary - smallest */}
-                                    <div className={`absolute border transition-all duration-500 rounded p-1 flex flex-col justify-between ${
-                                      estimatorSize === 'A4' 
-                                        ? 'w-[35%] h-[42%] bg-indigo-950/25 border-indigo-500/50 z-30' 
-                                        : 'w-[35%] h-[42%] border-zinc-800/30 opacity-30 z-0'
-                                    }`}>
-                                      <span className="text-[6.5px] font-bold text-zinc-550 font-mono">A4 (8.3&quot; x 11.7&quot;)</span>
-                                      {estimatorSize === 'A4' && <span className="text-[7px] font-mono font-bold text-center text-indigo-400 self-center">Active Target</span>}
-                                    </div>
-                                  </div>
-                                </div>
-
-                                <div className="mt-2.5 flex items-center justify-between text-[7px] font-mono text-zinc-500">
-                                  <span>Active Selection: <strong className="text-zinc-300">{estimatorSize}</strong></span>
-                                  <span>Resolution: <strong className="text-zinc-400">300 DPI Fine-Art</strong></span>
-                                </div>
-                              </div>
-                            )}
-                          </div>
-
-                          <div className="mt-4 pt-3.5 border-t border-zinc-900/80 flex items-center justify-between">
-                            <div className="text-left font-mono">
-                              <span className="text-[8px] text-zinc-550 uppercase block font-bold leading-none mb-0.5">Est. Fine Art Print Cost</span>
-                              <span className="text-sm font-extrabold text-white">
-                                ${(() => {
-                                  let base = 22;
-                                  if (estimatorSize === 'A4') base = 12;
-                                  if (estimatorSize === 'Poster') base = 38;
-
-                                  let extra = 0;
-                                  if (estimatorQuality === 'premium') extra = 5;
-                                  if (estimatorQuality === 'collector') extra = 12;
-
-                                  const multiplier = estimatorQuality === 'standard' ? 1.0 : estimatorQuality === 'premium' ? 1.25 : 1.6;
-                                  return Math.round(base * multiplier + extra);
-                                })()}
-                              </span>
-                            </div>
-                            <span className="text-[8px] font-mono text-emerald-400 bg-emerald-950/40 border border-emerald-900/60 px-2 py-0.5 rounded uppercase font-bold animate-pulse">
-                              Full sRGB Gamut
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-
                       {/* SPECIFICATION QR CODE & WHATSAPP ROW */}
-                      <div className="grid grid-cols-2 gap-4 mt-4">
-                        {/* QR Code Spec Downloader */}
-                        <div className="bg-zinc-900/30 border border-zinc-900 rounded-xl p-4 flex flex-col justify-between items-center text-center">
-                          <div className="w-full flex flex-col items-center">
-                            <div className="flex items-center justify-center gap-1.5 mb-2.5">
-                              <QrCode className="w-3.5 h-3.5 text-gold-400" />
-                              <span className="font-mono text-[9px] text-zinc-400 uppercase tracking-widest font-bold">SPEC SHEET QR</span>
-                            </div>
-                            <div className="bg-zinc-950 p-1.5 rounded-lg border border-zinc-900 filter invert opacity-95">
-                              <ProjectQRCode 
-                                url={`${window.location.origin}${window.location.pathname}?project=${viewingProject.id}`} 
-                                size={70} 
-                              />
-                            </div>
-                          </div>
-                          
-                          <button
-                            type="button"
-                            onClick={() => handleDownloadQRCode(
-                              viewingProject.title, 
-                              `${window.location.origin}${window.location.pathname}?project=${viewingProject.id}`
-                            )}
-                            className="w-full mt-3 bg-zinc-950 hover:bg-zinc-900 border border-zinc-900 hover:border-gold-500/20 text-gold-400 hover:text-white py-1.5 rounded-lg text-[9.5px] font-mono uppercase font-bold tracking-wider transition select-none cursor-pointer flex items-center justify-center gap-1.5"
-                          >
-                            <Download className="w-3.5 h-3.5 text-gold-400/80" />
-                            <span>Download QR</span>
-                          </button>
-                        </div>
-
+                      <div className="flex flex-col gap-4 mt-4">
                         {/* WhatsApp Custom Enquiry */}
                         <div className="bg-zinc-900/30 border border-zinc-900 rounded-xl p-4 flex flex-col justify-between items-center text-center">
                           <div className="w-full flex flex-col items-center">
@@ -4921,37 +4627,6 @@ export default function App() {
                     <Sparkles className="w-4 h-4" />
                     <span className="uppercase font-mono font-extrabold tracking-wide text-[10px]">Atelier Customize</span>
                   </button>
-                </div>
-
-                {/* Production-grade deliverables row */}
-                <div className="pt-4 border-t border-zinc-900/60 mt-4">
-                  <div className="flex items-center gap-1.5 text-[10px] text-zinc-500 font-mono uppercase font-bold mb-2.5">
-                    <Printer className="w-3 h-3 text-zinc-500" />
-                    <span>HIFI ASSETS FOR OFFSET PRINTING & MASTER VECTORS</span>
-                  </div>
-                  <div className="flex flex-col sm:flex-row gap-2.5">
-                    <button
-                      type="button"
-                      disabled={exportState === 'generating'}
-                      onClick={() => handleExportPortfolioProjectSVG(viewingProject)}
-                      className={`flex-1 bg-zinc-950 hover:bg-zinc-900 md:border border-zinc-900 hover:border-gold-500/25 text-zinc-400 hover:text-white font-semibold py-2 px-3 rounded-xl flex items-center justify-center gap-1.5 transition active:scale-95 text-xs select-none cursor-pointer ${exportState === 'generating' ? 'opacity-50 cursor-not-allowed' : ''}`}
-                      title="Download clean, infinite scalable SVG vector design specifications"
-                    >
-                      <Layers className="w-3.5 h-3.5 text-gold-400/80" />
-                      <span>{exportState === 'generating' && exportType === 'SVG' ? `SVG Progress (${exportProgress}%)` : 'Export SVG (Vector)'}</span>
-                    </button>
-
-                    <button
-                      type="button"
-                      disabled={exportState === 'generating'}
-                      onClick={() => handleExportPortfolioProjectTIFF(viewingProject)}
-                      className={`flex-1 bg-zinc-950 hover:bg-zinc-900 md:border border-zinc-900 hover:border-indigo-500/25 text-zinc-400 hover:text-white font-semibold py-2 px-3 rounded-xl flex items-center justify-center gap-1.5 transition active:scale-95 text-xs select-none cursor-pointer ${exportState === 'generating' ? 'opacity-50 cursor-not-allowed' : ''}`}
-                      title="Download 300DPI pixel-perfect lossless TIFF image for offset printing presses"
-                    >
-                      <Printer className="w-3.5 h-3.5 text-indigo-400" />
-                      <span>{exportState === 'generating' && exportType === 'TIFF' ? `TIFF Progress (${exportProgress}%)` : 'Export TIFF (sRGB Glossy)'}</span>
-                    </button>
-                  </div>
                 </div>
 
                 {/* Real-time Progressive Generation Status Monitor */}
@@ -5140,7 +4815,7 @@ export default function App() {
       {/* Floating WhatsApp Quick-Contact Button */}
       <div className="fixed bottom-6 left-6 z-[100]">
         <a
-          href="https://wa.me/15550199?text=Hello%20CreativeNode%20Studio!%20I%20would%20love%20to%20consult%20on%20a%20professional%20poster%20project%20outline."
+          href="https://wa.me/916369278905?text=Hello%20CreativeNode%20Studio!%20I%20would%20love%20to%20consult%20on%20a%20professional%20poster%20project%20outline."
           target="_blank"
           rel="noopener noreferrer"
           className="group flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white font-mono text-[9px] font-bold tracking-widest uppercase py-2.5 px-3.5 rounded-full shadow-[0_4px_16px_rgba(16,185,129,0.35)] transition-all duration-300 hover:scale-105 active:scale-95 cursor-pointer select-none"
